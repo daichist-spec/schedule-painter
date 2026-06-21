@@ -1107,21 +1107,11 @@
     background: var(--bg-elevated);
   }
   .template-item .template-time {
-    font-size: 12px;
-    font-variant-numeric: tabular-nums;
-    color: var(--text-secondary);
-    flex-shrink: 0;
-    width: 92px;
-  }
-  .template-item .template-name {
     flex: 1;
-    min-width: 0;
     font-size: 13px;
-    font-weight: 500;
+    font-variant-numeric: tabular-nums;
     color: var(--text-primary);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    font-weight: 500;
   }
   .template-item .template-del-btn {
     flex-shrink: 0;
@@ -1142,28 +1132,8 @@
     align-items: center;
   }
   .template-add-row input[type="time"] {
-    width: 92px;
+    width: 110px;
     padding: 8px 6px;
-    border: 1.5px solid var(--border-subtle);
-    border-radius: var(--radius-md);
-    font-size: 12.5px;
-    font-family: inherit;
-    background: var(--bg-elevated);
-    color: var(--text-primary);
-  }
-  .template-add-row select {
-    padding: 8px 6px;
-    border: 1.5px solid var(--border-subtle);
-    border-radius: var(--radius-md);
-    font-size: 12.5px;
-    font-family: inherit;
-    background: var(--bg-elevated);
-    color: var(--text-primary);
-  }
-  .template-add-row input[type="text"] {
-    flex: 1;
-    min-width: 120px;
-    padding: 8px 10px;
     border: 1.5px solid var(--border-subtle);
     border-radius: var(--radius-md);
     font-size: 13px;
@@ -1171,9 +1141,17 @@
     background: var(--bg-elevated);
     color: var(--text-primary);
   }
-  .template-add-row input:focus, .template-add-row select:focus {
+  .template-add-tilde {
+    font-size: 13px;
+    color: var(--text-tertiary);
+    flex-shrink: 0;
+  }
+  .template-add-row input:focus {
     border-color: var(--accent);
     outline: none;
+  }
+  .template-add-row .modal-apply-btn {
+    margin-left: auto;
   }
 
   .modal-custom-row {
@@ -1456,7 +1434,7 @@
     <div class="card">
       <h2>📅 日付タイプ</h2>
       <div class="palette-hint">
-        「平日」「休み」のような日のタイプを作り、よく使う時間ブロックの配置（テンプレート）を紐付けられます。日付の見出しをクリックすると、その日にタイプを設定できます。設定すると、テンプレートの時間帯が斜線の下敷きで表示されます（参考表示で、クリックすればその部分だけ本番の色に上書きできます）。
+        「平日」「休み」のような日のタイプを作り、🗓️から開始〜終了時刻でよく使う時間帯を登録できます。日付の見出しをクリックすると、その日にタイプを設定できます。設定すると、その時間帯が斜線の下敷きで表示されます（参考表示で、クリックすればその部分だけ本番の色に上書きできます）。
       </div>
       <div class="date-type-list" id="dateTypeList"></div>
       <button type="button" class="btn" id="addDateTypeBtn" style="width:100%;margin-top:8px;">＋ 日付タイプを追加</button>
@@ -1532,8 +1510,8 @@
     <div class="modal-section-label">追加</div>
     <div class="template-add-row">
       <input type="time" id="templateAddStart" value="09:00" step="900" />
-      <select id="templateAddLength"></select>
-      <input type="text" id="templateAddName" placeholder="名前（例：コアタイム）" maxlength="20" />
+      <span class="template-add-tilde">〜</span>
+      <input type="time" id="templateAddEnd" value="18:00" step="900" />
       <button type="button" class="modal-apply-btn" id="templateAddBtn">追加</button>
     </div>
 
@@ -1610,10 +1588,10 @@
     </div>
 
     <div class="help-section">
-      <h3>📅 日付タイプとテンプレート</h3>
+      <h3>📅 日付タイプとテンプレート時間帯</h3>
       <p>左パネルの「日付タイプ」で、「平日」「休み」のような日のタイプを自由に作れます。絵文字（または記号）と名前を付けられ、色は持ちません。</p>
-      <p>各タイプには🗓️ボタンから「テンプレート」（よく使う時間ブロックの配置、例：9:00〜18:00 コアタイム）を好きな数だけ登録できます。</p>
-      <p>グリッド上の<b>日付の見出し部分をクリック</b>すると、その日にタイプを設定できます。設定すると、テンプレートの時間帯が<b>斜線模様の薄いグレー</b>で「下敷き」として表示されます（中央に小さくテンプレート名も出ます）。</p>
+      <p>各タイプには🗓️ボタンから「時間帯」（よく使うコアタイムの範囲、例：9:00〜18:00）を<b>開始時刻と終了時刻</b>で好きな数だけ登録できます。名前は付けず、下敷きには常にその日付タイプの名前（「平日」など）が表示されます。</p>
+      <p>グリッド上の<b>日付の見出し部分をクリック</b>すると、その日にタイプを設定できます。設定すると、登録した時間帯が<b>斜線模様の薄いグレー</b>で「下敷き」として表示されます。</p>
       <p class="help-note">下敷きはあくまで参考表示で、実際のデータには影響しません。下敷きの上をクリックして普通に色を塗ると、その部分だけ下敷きが消えて本番の予定になります。下敷きを消して元に戻したい場合は、その上の予定を消去すれば再び下敷きが見えるようになります。</p>
     </div>
 
@@ -1907,7 +1885,8 @@ function getTemplateOverlayForDate(dateStr) {
       const key = slotToKey(startSlot + i);
       // 日をまたぐテンプレートは想定しない（その日のスロット範囲内のみ反映）
       if (key.split("_")[0] !== dateStr) break;
-      overlay[key] = { name: tpl.name, isStart: i === 0, isEnd: i === tpl.length - 1 };
+      // ラベルは常に日付タイプの名前（平日・休みなど）を表示する。テンプレート個別の名前は持たない
+      overlay[key] = { name: type.name, isStart: i === 0, isEnd: i === tpl.length - 1 };
     }
   });
   return overlay;
@@ -2135,29 +2114,12 @@ document.getElementById("addDateTypeBtn").addEventListener("click", () => {
 // ========== テンプレート編集モーダル ==========
 let templateModalTypeId = null;
 
-function populateTemplateLengthOptions() {
-  const sel = document.getElementById("templateAddLength");
-  if (sel.options.length > 0) return; // 初回のみ生成
-  const opts = [
-    [1, "15分"], [2, "30分"], [3, "45分"], [4, "1時間"],
-    [6, "1.5時間"], [8, "2時間"], [12, "3時間"], [16, "4時間"],
-    [24, "6時間"], [32, "8時間"], [36, "9時間"], [40, "10時間"],
-  ];
-  opts.forEach(([v, label]) => {
-    const o = document.createElement("option");
-    o.value = v;
-    o.textContent = label;
-    sel.appendChild(o);
-  });
-  sel.value = 4;
-}
-
 function renderTemplateList() {
   const type = dateTypes.find(t => t.id === templateModalTypeId);
   const list = document.getElementById("templateList");
   list.innerHTML = "";
   if (!type || type.templates.length === 0) {
-    list.innerHTML = `<div class="template-empty">まだテンプレートがありません</div>`;
+    list.innerHTML = `<div class="template-empty">まだ時間帯が登録されていません</div>`;
     return;
   }
   const sorted = [...type.templates].sort((a, b) => a.startTime.localeCompare(b.startTime));
@@ -2168,8 +2130,8 @@ function renderTemplateList() {
     const startH = tpl.startTime.slice(0,2), startM = tpl.startTime.slice(2,4);
     const endSlot = keyToSlotFromTime(tpl.startTime) + tpl.length;
     const endH = Math.floor((endSlot % 96) / 4), endM = (endSlot % 4) * 15;
-    const timeLabel = `${startH}:${startM}〜${String(endH).padStart(2,"0")}:${String(endM).padStart(2,"0")}`;
-    item.innerHTML = `<span class="template-time">${timeLabel}</span><span class="template-name">${escapeHtml(tpl.name)}</span>`;
+    const timeLabel = `${startH}:${startM} 〜 ${String(endH).padStart(2,"0")}:${String(endM).padStart(2,"0")}`;
+    item.innerHTML = `<span class="template-time">${timeLabel}</span>`;
     const del = document.createElement("button");
     del.type = "button";
     del.className = "template-del-btn";
@@ -2195,10 +2157,9 @@ function keyToSlotFromTime(timeStr) {
 function openTemplateModal(typeId) {
   templateModalTypeId = typeId;
   const type = dateTypes.find(t => t.id === typeId);
-  document.getElementById("templateModalTitle").textContent = `「${type ? type.name : ''}」のテンプレート`;
-  populateTemplateLengthOptions();
-  document.getElementById("templateAddName").value = "";
+  document.getElementById("templateModalTitle").textContent = `「${type ? type.name : ''}」の時間帯`;
   document.getElementById("templateAddStart").value = "09:00";
+  document.getElementById("templateAddEnd").value = "18:00";
   renderTemplateList();
   document.getElementById("templateModalOverlay").classList.add("show");
 }
@@ -2217,14 +2178,16 @@ document.getElementById("templateAddBtn").addEventListener("click", () => {
   const type = dateTypes.find(t => t.id === templateModalTypeId);
   if (!type) return;
   const startVal = document.getElementById("templateAddStart").value; // "HH:MM"
-  if (!startVal) { showToast("開始時刻を入力してください"); return; }
+  const endVal = document.getElementById("templateAddEnd").value;     // "HH:MM"
+  if (!startVal || !endVal) { showToast("開始・終了時刻を入力してください"); return; }
   const startTime = startVal.replace(":", "");
-  const length = parseInt(document.getElementById("templateAddLength").value, 10);
-  const name = document.getElementById("templateAddName").value.trim();
-  if (!name) { showToast("名前を入力してください"); return; }
-  type.templates.push({ startTime, length, name });
+  const startSlot = keyToSlotFromTime(startTime);
+  let endSlot = keyToSlotFromTime(endVal.replace(":", ""));
+  if (endSlot <= startSlot) endSlot += 96; // 終了が開始より前（=日をまたぐ）場合はその日の終わり(24:00)までとして扱う
+  const length = Math.min(endSlot - startSlot, 96 - startSlot); // その日の範囲内に収める
+  if (length <= 0) { showToast("終了時刻は開始時刻より後にしてください"); return; }
+  type.templates.push({ startTime, length });
   saveDateTypes();
-  document.getElementById("templateAddName").value = "";
   renderTemplateList();
 });
 
