@@ -513,6 +513,77 @@
     padding: 6px 8px;
   }
 
+  /* 日付タイプ一覧 */
+  .date-type-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .date-type-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px;
+    border-radius: var(--radius-md);
+  }
+  .date-type-item:hover { background: var(--bg-subtle); }
+  .date-type-icon-input {
+    width: 30px;
+    height: 30px;
+    flex-shrink: 0;
+    text-align: center;
+    border: 1.5px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    font-size: 15px;
+    background: var(--bg-elevated);
+    padding: 0;
+  }
+  .date-type-icon-input:focus {
+    border-color: var(--accent);
+    outline: none;
+  }
+  .date-type-name-input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    background: transparent;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--text-primary);
+    padding: 4px 6px;
+    outline: none;
+    font-weight: 500;
+    border-radius: var(--radius-sm);
+  }
+  .date-type-name-input:focus {
+    background: var(--bg-panel);
+    box-shadow: 0 0 0 2px var(--accent-light);
+  }
+  .date-type-tpl-btn {
+    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    border: none;
+    background: transparent;
+    color: var(--text-tertiary);
+    font-size: 13px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+  }
+  .date-type-tpl-btn:hover { background: var(--accent-subtle); color: var(--accent); }
+  .date-type-del-btn {
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    border: none;
+    background: transparent;
+    color: var(--text-tertiary);
+    font-size: 12px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+  }
+  .date-type-del-btn:hover { background: #fef2f2; color: var(--danger); }
+
   /* ========== スケジュール ========== */
   .schedule-wrap {
     background: var(--bg-panel);
@@ -594,7 +665,11 @@
     z-index: 5;
     text-transform: uppercase;
     letter-spacing: 0.04em;
+    cursor: pointer;
   }
+  .schedule thead th:hover { background: var(--bg-subtle); }
+  .schedule thead th.time-col { cursor: default; }
+  .schedule thead th.time-col:hover { background: var(--bg-elevated); }
   .schedule thead th .day-num {
     display: block;
     font-size: 16px;
@@ -611,6 +686,12 @@
     color: var(--accent);
   }
   .schedule thead th.today .day-num { color: var(--accent); }
+  .schedule thead th .day-type-icon {
+    display: block;
+    font-size: 12px;
+    margin-top: 1px;
+    cursor: pointer;
+  }
 
   .schedule th.time-col, .schedule td.time-col {
     width: 56px;
@@ -861,6 +942,23 @@
     opacity: 0.85;
   }
 
+  /* テンプレート下敷き（日付タイプに紐づく参考表示。色は付けず斜線模様のグレー） */
+  .schedule td.cell.template-overlay {
+    background: repeating-linear-gradient(
+      45deg,
+      #e2e8f0 0px, #e2e8f0 4px,
+      #eef1f5 4px, #eef1f5 8px
+    );
+    cursor: pointer;
+  }
+  .schedule td.cell.template-overlay:hover { filter: brightness(0.97); }
+  .template-label {
+    color: var(--text-tertiary) !important;
+    text-shadow: none !important;
+    font-style: italic;
+  }
+  .schedule.day .template-label { font-size: 10px; }
+
   /* セル選択モーダル */
   .modal-overlay {
     position: fixed;
@@ -986,6 +1084,98 @@
     border-color: var(--accent);
     background: var(--bg-panel);
   }
+
+  /* テンプレート一覧・追加フォーム */
+  .template-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .template-empty {
+    font-size: 12.5px;
+    color: var(--text-tertiary);
+    padding: 10px 0;
+    text-align: center;
+  }
+  .template-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border: 1.5px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--bg-elevated);
+  }
+  .template-item .template-time {
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+    width: 92px;
+  }
+  .template-item .template-name {
+    flex: 1;
+    min-width: 0;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .template-item .template-del-btn {
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    border: none;
+    background: transparent;
+    color: var(--text-tertiary);
+    font-size: 12px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+  }
+  .template-item .template-del-btn:hover { background: #fef2f2; color: var(--danger); }
+  .template-add-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+  }
+  .template-add-row input[type="time"] {
+    width: 92px;
+    padding: 8px 6px;
+    border: 1.5px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    font-size: 12.5px;
+    font-family: inherit;
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+  }
+  .template-add-row select {
+    padding: 8px 6px;
+    border: 1.5px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    font-size: 12.5px;
+    font-family: inherit;
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+  }
+  .template-add-row input[type="text"] {
+    flex: 1;
+    min-width: 120px;
+    padding: 8px 10px;
+    border: 1.5px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    font-size: 13px;
+    font-family: inherit;
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+  }
+  .template-add-row input:focus, .template-add-row select:focus {
+    border-color: var(--accent);
+    outline: none;
+  }
+
   .modal-custom-row {
     display: flex;
     gap: 8px;
@@ -1261,6 +1451,16 @@
         <button class="btn" id="resetPaletteBtn">色をリセット</button>
       </div>
     </div>
+
+    <!-- 日付タイプ -->
+    <div class="card">
+      <h2>📅 日付タイプ</h2>
+      <div class="palette-hint">
+        「平日」「休み」のような日のタイプを作り、よく使う時間ブロックの配置（テンプレート）を紐付けられます。日付の見出しをクリックすると、その日にタイプを設定できます。設定すると、テンプレートの時間帯が斜線の下敷きで表示されます（参考表示で、クリックすればその部分だけ本番の色に上書きできます）。
+      </div>
+      <div class="date-type-list" id="dateTypeList"></div>
+      <button type="button" class="btn" id="addDateTypeBtn" style="width:100%;margin-top:8px;">＋ 日付タイプを追加</button>
+    </div>
   </aside>
 
   <main class="schedule-wrap" id="scheduleWrap">
@@ -1317,6 +1517,52 @@
   </div>
 </div>
 
+<!-- テンプレート編集モーダル -->
+<div class="modal-overlay" id="templateModalOverlay">
+  <div class="modal-card help-modal-card">
+    <div class="modal-header">
+      <span class="modal-title" id="templateModalTitle">テンプレートを編集</span>
+      <button type="button" class="help-close-btn" id="templateModalCloseBtn" aria-label="閉じる">✕</button>
+    </div>
+    <div class="modal-range">この日付タイプを設定した日に、下敷きとして表示される時間ブロックです。</div>
+
+    <div class="modal-section-label">テンプレート一覧</div>
+    <div id="templateList" class="template-list"></div>
+
+    <div class="modal-section-label">追加</div>
+    <div class="template-add-row">
+      <input type="time" id="templateAddStart" value="09:00" step="900" />
+      <select id="templateAddLength"></select>
+      <input type="text" id="templateAddName" placeholder="名前（例：コアタイム）" maxlength="20" />
+      <button type="button" class="modal-apply-btn" id="templateAddBtn">追加</button>
+    </div>
+
+    <div class="modal-footer">
+      <button type="button" class="modal-cancel-btn" id="templateModalDoneBtn">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- 日付に対する日付タイプ選択モーダル -->
+<div class="modal-overlay" id="dateTypeAssignOverlay">
+  <div class="modal-card">
+    <div class="modal-header">
+      <span class="modal-title">この日のタイプ</span>
+    </div>
+    <div class="modal-range" id="dateTypeAssignDateLabel"></div>
+
+    <div class="modal-section-label">日付タイプを選ぶ</div>
+    <div class="modal-palette-grid" id="dateTypeAssignGrid"></div>
+
+    <div class="modal-section-label">設定なし</div>
+    <button type="button" class="modal-eraser-btn" id="dateTypeAssignClearBtn">🚫 タイプを設定しない</button>
+
+    <div class="modal-footer">
+      <button type="button" class="modal-cancel-btn" id="dateTypeAssignCancelBtn">キャンセル</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="helpOverlay">
   <div class="modal-card help-modal-card">
     <div class="modal-header">
@@ -1361,6 +1607,14 @@
       <h3>↕️ ブロックの長さを変える（リサイズ）</h3>
       <p>選択中のブロックの<b>一番上または一番下のコマそのもの</b>をドラッグすると、その端だけが伸び縮みします（反対側の端は固定されたまま）。他の色付きブロックにぶつかる手前で自動的に止まります。</p>
       <p class="help-note">リサイズができるのは、選択中のブロックが1つの連続した塊である場合のみです。飛び石で複数のブロックをまとめて選んでいる時は、内側をドラッグすると「移動」になります。</p>
+    </div>
+
+    <div class="help-section">
+      <h3>📅 日付タイプとテンプレート</h3>
+      <p>左パネルの「日付タイプ」で、「平日」「休み」のような日のタイプを自由に作れます。絵文字（または記号）と名前を付けられ、色は持ちません。</p>
+      <p>各タイプには🗓️ボタンから「テンプレート」（よく使う時間ブロックの配置、例：9:00〜18:00 コアタイム）を好きな数だけ登録できます。</p>
+      <p>グリッド上の<b>日付の見出し部分をクリック</b>すると、その日にタイプを設定できます。設定すると、テンプレートの時間帯が<b>斜線模様の薄いグレー</b>で「下敷き」として表示されます（中央に小さくテンプレート名も出ます）。</p>
+      <p class="help-note">下敷きはあくまで参考表示で、実際のデータには影響しません。下敷きの上をクリックして普通に色を塗ると、その部分だけ下敷きが消えて本番の予定になります。下敷きを消して元に戻したい場合は、その上の予定を消去すれば再び下敷きが見えるようになります。</p>
     </div>
 
     <div class="help-section">
@@ -1422,6 +1676,8 @@ const NOTES_KEY = "paint_schedule_notes_v3";
 const PALETTE_KEY = "paint_schedule_palette_v3";
 const VIEW_KEY = "paint_schedule_view_v3";
 const GOALS_KEY = "paint_schedule_goals_v3";
+const DATE_TYPES_KEY = "paint_schedule_date_types_v3";
+const DATE_ASSIGN_KEY = "paint_schedule_date_assign_v3";
 const JP_WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
 const DEFAULT_PALETTE = [
   { color: "#FCA5A5", name: "重要業務A" },
@@ -1433,6 +1689,11 @@ const DEFAULT_PALETTE = [
   { color: "#F9A8D4", name: "プライベート" },
   { color: "#CBD5E1", name: "休憩・睡眠" },
 ];
+// 日付タイプの初期セット（名前のみで色は付けない。テンプレートは空からスタート）
+const DEFAULT_DATE_TYPES = [
+  { id: "weekday", icon: "💼", name: "平日", templates: [] },
+  { id: "dayoff", icon: "🌙", name: "休み", templates: [] },
+];
 
 // ========== 状態 ==========
 let palette = loadPalette();
@@ -1443,6 +1704,11 @@ let cellData = loadCellData();
 // 同色で連続するブロックの「先頭」を代表キーとして使う（renderの同色ブロック検出ロジックと対応）
 let cellNotes = loadCellNotes();
 let goalsData = loadGoals();
+// dateTypes: [{ id, icon, name, templates: [{ startTime: "HHMM", length, name }] }]
+// templatesのlengthは15分単位のコマ数。色は持たない（下敷きはグレー斜線固定）
+let dateTypes = loadDateTypes();
+// dateAssignments: { "YYYY-MM-DD": dateTypeId }
+let dateAssignments = loadDateAssignments();
 
 // ========== ストレージ ==========
 function loadCellData() {
@@ -1456,6 +1722,21 @@ function loadCellNotes() {
   catch { return {}; }
 }
 function saveCellNotes() { localStorage.setItem(NOTES_KEY, JSON.stringify(cellNotes)); }
+
+function loadDateTypes() {
+  try {
+    const t = JSON.parse(localStorage.getItem(DATE_TYPES_KEY));
+    if (Array.isArray(t)) return t;
+  } catch {}
+  return JSON.parse(JSON.stringify(DEFAULT_DATE_TYPES));
+}
+function saveDateTypes() { localStorage.setItem(DATE_TYPES_KEY, JSON.stringify(dateTypes)); }
+
+function loadDateAssignments() {
+  try { return JSON.parse(localStorage.getItem(DATE_ASSIGN_KEY) || "{}"); }
+  catch { return {}; }
+}
+function saveDateAssignments() { localStorage.setItem(DATE_ASSIGN_KEY, JSON.stringify(dateAssignments)); }
 
 function loadPalette() {
   try {
@@ -1604,6 +1885,38 @@ function computeResizedBlockKeys(targetKey) {
   return keys;
 }
 
+// ========== 日付タイプ・テンプレート ==========
+function getDateType(dateStr) {
+  const typeId = dateAssignments[dateStr];
+  if (!typeId) return null;
+  return dateTypes.find(t => t.id === typeId) || null;
+}
+
+// 指定した日付に紐づくテンプレートを展開し、{ key: { name, length, isStart } } 形式の
+// 下敷き表示用マップを返す（その日の96コマすべてをチェックする必要はなく、テンプレートの範囲だけ計算する）
+function getTemplateOverlayForDate(dateStr) {
+  const type = getDateType(dateStr);
+  const overlay = {}; // key -> { name, isStart, isEnd }
+  if (!type || !Array.isArray(type.templates)) return overlay;
+  type.templates.forEach(tpl => {
+    const h = parseInt(tpl.startTime.slice(0, 2), 10);
+    const m = parseInt(tpl.startTime.slice(2, 4), 10);
+    const startKey = `${dateStr}_${String(h).padStart(2,"0")}${String(m).padStart(2,"0")}`;
+    const startSlot = keyToSlot(startKey);
+    for (let i = 0; i < tpl.length; i++) {
+      const key = slotToKey(startSlot + i);
+      // 日をまたぐテンプレートは想定しない（その日のスロット範囲内のみ反映）
+      if (key.split("_")[0] !== dateStr) break;
+      overlay[key] = { name: tpl.name, isStart: i === 0, isEnd: i === tpl.length - 1 };
+    }
+  });
+  return overlay;
+}
+
+function generateId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
 // ========== 目標 ==========
 function loadCurrentGoals() {
   const monthKey = getMonthKey(currentDate);
@@ -1745,6 +2058,224 @@ function refreshColoredCellLabels() {
   updateStatus();
 }
 
+// ========== 日付タイプ管理（左パネル） ==========
+function renderDateTypeList() {
+  const list = document.getElementById("dateTypeList");
+  list.innerHTML = "";
+  if (dateTypes.length === 0) {
+    list.innerHTML = `<div class="template-empty">まだ日付タイプがありません</div>`;
+    return;
+  }
+  dateTypes.forEach((t, i) => {
+    const item = document.createElement("div");
+    item.className = "date-type-item";
+
+    const iconInput = document.createElement("input");
+    iconInput.type = "text";
+    iconInput.className = "date-type-icon-input";
+    iconInput.value = t.icon || "📌";
+    iconInput.maxLength = 2;
+    iconInput.title = "絵文字・記号";
+    iconInput.addEventListener("input", e => {
+      dateTypes[i].icon = e.target.value;
+      saveDateTypes();
+      render();
+    });
+
+    const nameInput = document.createElement("input");
+    nameInput.type = "text";
+    nameInput.className = "date-type-name-input";
+    nameInput.value = t.name;
+    nameInput.placeholder = "タイプ名";
+    nameInput.addEventListener("input", e => {
+      dateTypes[i].name = e.target.value;
+      saveDateTypes();
+    });
+
+    const tplBtn = document.createElement("button");
+    tplBtn.type = "button";
+    tplBtn.className = "date-type-tpl-btn";
+    tplBtn.innerHTML = "🗓️";
+    tplBtn.title = "テンプレートを編集";
+    tplBtn.addEventListener("click", () => openTemplateModal(t.id));
+
+    const del = document.createElement("button");
+    del.type = "button";
+    del.className = "date-type-del-btn";
+    del.innerHTML = "✕";
+    del.title = "この日付タイプを削除";
+    del.addEventListener("click", () => {
+      if (!confirm(`「${t.name}」を削除しますか？\nこのタイプが設定されている日からも外れます。`)) return;
+      dateTypes.splice(i, 1);
+      saveDateTypes();
+      // このタイプを使っていた日付の割り当ても解除する
+      Object.keys(dateAssignments).forEach(d => {
+        if (dateAssignments[d] === t.id) delete dateAssignments[d];
+      });
+      saveDateAssignments();
+      renderDateTypeList();
+      render();
+    });
+
+    item.appendChild(iconInput);
+    item.appendChild(nameInput);
+    item.appendChild(tplBtn);
+    item.appendChild(del);
+    list.appendChild(item);
+  });
+}
+
+document.getElementById("addDateTypeBtn").addEventListener("click", () => {
+  const newType = { id: generateId(), icon: "📌", name: "新しいタイプ", templates: [] };
+  dateTypes.push(newType);
+  saveDateTypes();
+  renderDateTypeList();
+});
+
+// ========== テンプレート編集モーダル ==========
+let templateModalTypeId = null;
+
+function populateTemplateLengthOptions() {
+  const sel = document.getElementById("templateAddLength");
+  if (sel.options.length > 0) return; // 初回のみ生成
+  const opts = [
+    [1, "15分"], [2, "30分"], [3, "45分"], [4, "1時間"],
+    [6, "1.5時間"], [8, "2時間"], [12, "3時間"], [16, "4時間"],
+    [24, "6時間"], [32, "8時間"], [36, "9時間"], [40, "10時間"],
+  ];
+  opts.forEach(([v, label]) => {
+    const o = document.createElement("option");
+    o.value = v;
+    o.textContent = label;
+    sel.appendChild(o);
+  });
+  sel.value = 4;
+}
+
+function renderTemplateList() {
+  const type = dateTypes.find(t => t.id === templateModalTypeId);
+  const list = document.getElementById("templateList");
+  list.innerHTML = "";
+  if (!type || type.templates.length === 0) {
+    list.innerHTML = `<div class="template-empty">まだテンプレートがありません</div>`;
+    return;
+  }
+  const sorted = [...type.templates].sort((a, b) => a.startTime.localeCompare(b.startTime));
+  sorted.forEach(tpl => {
+    const idx = type.templates.indexOf(tpl);
+    const item = document.createElement("div");
+    item.className = "template-item";
+    const startH = tpl.startTime.slice(0,2), startM = tpl.startTime.slice(2,4);
+    const endSlot = keyToSlotFromTime(tpl.startTime) + tpl.length;
+    const endH = Math.floor((endSlot % 96) / 4), endM = (endSlot % 4) * 15;
+    const timeLabel = `${startH}:${startM}〜${String(endH).padStart(2,"0")}:${String(endM).padStart(2,"0")}`;
+    item.innerHTML = `<span class="template-time">${timeLabel}</span><span class="template-name">${escapeHtml(tpl.name)}</span>`;
+    const del = document.createElement("button");
+    del.type = "button";
+    del.className = "template-del-btn";
+    del.innerHTML = "✕";
+    del.addEventListener("click", () => {
+      type.templates.splice(idx, 1);
+      saveDateTypes();
+      renderTemplateList();
+      render();
+    });
+    item.appendChild(del);
+    list.appendChild(item);
+  });
+}
+
+// "HHMM"形式の時刻文字列を、その日の0:00を起点とした0〜95のスロット番号に変換（日付に依存しない相対値）
+function keyToSlotFromTime(timeStr) {
+  const h = parseInt(timeStr.slice(0, 2), 10);
+  const m = parseInt(timeStr.slice(2, 4), 10);
+  return h * 4 + (m / 15);
+}
+
+function openTemplateModal(typeId) {
+  templateModalTypeId = typeId;
+  const type = dateTypes.find(t => t.id === typeId);
+  document.getElementById("templateModalTitle").textContent = `「${type ? type.name : ''}」のテンプレート`;
+  populateTemplateLengthOptions();
+  document.getElementById("templateAddName").value = "";
+  document.getElementById("templateAddStart").value = "09:00";
+  renderTemplateList();
+  document.getElementById("templateModalOverlay").classList.add("show");
+}
+function closeTemplateModal() {
+  document.getElementById("templateModalOverlay").classList.remove("show");
+  templateModalTypeId = null;
+  render(); // テンプレート変更を表示に反映
+}
+document.getElementById("templateModalCloseBtn").addEventListener("click", closeTemplateModal);
+document.getElementById("templateModalDoneBtn").addEventListener("click", closeTemplateModal);
+document.getElementById("templateModalOverlay").addEventListener("click", e => {
+  if (e.target.id === "templateModalOverlay") closeTemplateModal();
+});
+
+document.getElementById("templateAddBtn").addEventListener("click", () => {
+  const type = dateTypes.find(t => t.id === templateModalTypeId);
+  if (!type) return;
+  const startVal = document.getElementById("templateAddStart").value; // "HH:MM"
+  if (!startVal) { showToast("開始時刻を入力してください"); return; }
+  const startTime = startVal.replace(":", "");
+  const length = parseInt(document.getElementById("templateAddLength").value, 10);
+  const name = document.getElementById("templateAddName").value.trim();
+  if (!name) { showToast("名前を入力してください"); return; }
+  type.templates.push({ startTime, length, name });
+  saveDateTypes();
+  document.getElementById("templateAddName").value = "";
+  renderTemplateList();
+});
+
+// ========== 日付タイプ割り当てモーダル（日付見出しクリック時） ==========
+let dateTypeAssignTarget = null; // "YYYY-MM-DD"
+
+function openDateTypeAssignModal(dateStr) {
+  dateTypeAssignTarget = dateStr;
+  const d = new Date(dateStr);
+  document.getElementById("dateTypeAssignDateLabel").textContent =
+    `${d.getMonth()+1}/${d.getDate()}(${JP_WEEKDAYS[d.getDay()]})`;
+  const grid = document.getElementById("dateTypeAssignGrid");
+  grid.innerHTML = "";
+  if (dateTypes.length === 0) {
+    grid.innerHTML = `<div class="template-empty">左パネルの「＋ 日付タイプを追加」で作成してください</div>`;
+  } else {
+    dateTypes.forEach(t => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "modal-palette-item";
+      const isActive = dateAssignments[dateStr] === t.id;
+      if (isActive) btn.style.borderColor = "var(--accent)";
+      btn.innerHTML = `<span>${t.icon}</span><span>${escapeHtml(t.name)}</span>`;
+      btn.addEventListener("click", () => {
+        dateAssignments[dateStr] = t.id;
+        saveDateAssignments();
+        closeDateTypeAssignModal();
+        render();
+      });
+      grid.appendChild(btn);
+    });
+  }
+  document.getElementById("dateTypeAssignOverlay").classList.add("show");
+}
+function closeDateTypeAssignModal() {
+  document.getElementById("dateTypeAssignOverlay").classList.remove("show");
+  dateTypeAssignTarget = null;
+}
+document.getElementById("dateTypeAssignCancelBtn").addEventListener("click", closeDateTypeAssignModal);
+document.getElementById("dateTypeAssignOverlay").addEventListener("click", e => {
+  if (e.target.id === "dateTypeAssignOverlay") closeDateTypeAssignModal();
+});
+document.getElementById("dateTypeAssignClearBtn").addEventListener("click", () => {
+  if (dateTypeAssignTarget) {
+    delete dateAssignments[dateTypeAssignTarget];
+    saveDateAssignments();
+  }
+  closeDateTypeAssignModal();
+  render();
+});
+
 // ========== ビュー切替 ==========
 function setView(v) {
   currentView = v;
@@ -1810,19 +2341,22 @@ function renderWeek() {
     `<span class="year-month">${monday.getFullYear()}</span>${monday.getMonth()+1}/${monday.getDate()} <span style="color:var(--text-tertiary);font-weight:500;">–</span> ${last.getMonth()+1}/${last.getDate()}`;
   document.getElementById("viewNote").textContent = "選択はクリック／Shift・Cmd+クリック／ドラッグ。確定はダブルクリックか左の色見本";
 
-  // 各日について、96コマ分の色配列・key配列とラベル表示位置を事前計算
+  // 各日について、96コマ分の色配列・key配列・テンプレート下敷きを事前計算
   const dayColors = [];
   const dayKeys = [];
+  const dayOverlays = [];
   dates.forEach(d => {
+    const dateStr = fmtDate(d);
     const colorsArr = [];
     const keysArr = [];
     for (let h = 0; h < 24; h++) for (let m = 0; m < 60; m += 15) {
-      const key = `${fmtDate(d)}_${String(h).padStart(2,"0")}${String(m).padStart(2,"0")}`;
+      const key = `${dateStr}_${String(h).padStart(2,"0")}${String(m).padStart(2,"0")}`;
       colorsArr.push(cellData[key]);
       keysArr.push(key);
     }
     dayColors.push(colorsArr);
     dayKeys.push(keysArr);
+    dayOverlays.push(getTemplateOverlayForDate(dateStr));
   });
   const dayLabels = dayColors.map((colors, i) => computeBlockLabels(colors, dayKeys[i]));
 
@@ -1832,7 +2366,9 @@ function renderWeek() {
     if (i === 5) cls.push("sat");
     if (i === 6) cls.push("sun");
     if (isSameDay(d, today)) cls.push("today");
-    html += `<th class="${cls.join(' ')}">${JP_WEEKDAYS[d.getDay()]}<span class="day-num">${d.getDate()}</span></th>`;
+    const type = getDateType(fmtDate(d));
+    const typeIcon = type ? `<span class="day-type-icon" title="${escapeHtml(type.name)}">${type.icon}</span>` : "";
+    html += `<th class="${cls.join(' ')}" data-date="${fmtDate(d)}">${JP_WEEKDAYS[d.getDay()]}<span class="day-num">${d.getDate()}</span>${typeIcon}</th>`;
   });
   html += "</tr></thead><tbody>";
 
@@ -1851,15 +2387,26 @@ function renderWeek() {
         if (isHourTop) cls.push("hour-top");
         if (i === 5) cls.push("sat");
         if (i === 6) cls.push("sun");
+        let labelHtml = "";
+        let style = "";
         if (color) {
           cls.push("colored");
           const dayArr = dayColors[i];
           if (dayArr[idx - 1] !== color) cls.push("block-start");
           if (dayArr[idx + 1] !== color) cls.push("block-end");
+          style = `style="background:${color};"`;
+          const label = dayLabels[i].get(idx);
+          if (label) labelHtml = `<span class="cell-label">${escapeHtml(label)}</span>`;
+        } else {
+          // 色が付いていない場合のみ、テンプレートの下敷きを表示する
+          const ov = dayOverlays[i][key];
+          if (ov) {
+            cls.push("template-overlay");
+            if (ov.isStart) cls.push("template-start");
+            if (ov.isEnd) cls.push("template-end");
+            if (ov.isStart) labelHtml = `<span class="cell-label template-label">${escapeHtml(ov.name)}</span>`;
+          }
         }
-        const style = color ? `style="background:${color};"` : "";
-        const label = dayLabels[i].get(idx);
-        const labelHtml = label ? `<span class="cell-label">${escapeHtml(label)}</span>` : "";
         html += `<td class="${cls.join(' ')}" data-key="${key}" ${style}>${labelHtml}</td>`;
       });
       html += "</tr>";
@@ -1881,18 +2428,22 @@ function renderDay() {
 
   const dow = d.getDay();
   const dayCls = dow === 6 ? "sat" : (dow === 0 ? "sun" : "");
+  const dateStr = fmtDate(d);
 
-  // 96コマ分の色配列・key配列とラベル表示位置を事前計算
+  // 96コマ分の色配列・key配列・テンプレート下敷きを事前計算
   const colors = [];
   const keysArr = [];
   for (let h = 0; h < 24; h++) for (let m = 0; m < 60; m += 15) {
-    const key = `${fmtDate(d)}_${String(h).padStart(2,"0")}${String(m).padStart(2,"0")}`;
+    const key = `${dateStr}_${String(h).padStart(2,"0")}${String(m).padStart(2,"0")}`;
     colors.push(cellData[key]);
     keysArr.push(key);
   }
   const labels = computeBlockLabels(colors, keysArr);
+  const overlay = getTemplateOverlayForDate(dateStr);
 
-  let html = `<thead><tr><th class='time-col'>TIME</th><th class="${dayCls}${isToday ? ' today' : ''}">${JP_WEEKDAYS[dow]}<span class="day-num">${d.getMonth()+1}/${d.getDate()}</span></th></tr></thead><tbody>`;
+  const type = getDateType(dateStr);
+  const typeIcon = type ? `<span class="day-type-icon" title="${escapeHtml(type.name)}">${type.icon}</span>` : "";
+  let html = `<thead><tr><th class='time-col'>TIME</th><th class="${dayCls}${isToday ? ' today' : ''}" data-date="${dateStr}">${JP_WEEKDAYS[dow]}<span class="day-num">${d.getMonth()+1}/${d.getDate()}</span>${typeIcon}</th></tr></thead><tbody>`;
 
   let idx = 0;
   for (let h = 0; h < 24; h++) {
@@ -1902,20 +2453,30 @@ function renderDay() {
       const tcCls = ["time-col"];
       if (isHourTop) tcCls.push("hour-mark");
       html += `<tr><td class="${tcCls.join(' ')}">${timeStr}</td>`;
-      const key = `${fmtDate(d)}_${String(h).padStart(2,"0")}${String(m).padStart(2,"0")}`;
+      const key = `${dateStr}_${String(h).padStart(2,"0")}${String(m).padStart(2,"0")}`;
       const color = cellData[key];
       const cls = ["cell"];
       if (isHourTop) cls.push("hour-top");
       if (dow === 6) cls.push("sat");
       if (dow === 0) cls.push("sun");
+      let labelHtml = "";
+      let style = "";
       if (color) {
         cls.push("colored");
         if (colors[idx - 1] !== color) cls.push("block-start");
         if (colors[idx + 1] !== color) cls.push("block-end");
+        style = `style="background:${color};"`;
+        const label = labels.get(idx);
+        if (label) labelHtml = `<span class="cell-label">${escapeHtml(label)}</span>`;
+      } else {
+        const ov = overlay[key];
+        if (ov) {
+          cls.push("template-overlay");
+          if (ov.isStart) cls.push("template-start");
+          if (ov.isEnd) cls.push("template-end");
+          if (ov.isStart) labelHtml = `<span class="cell-label template-label">${escapeHtml(ov.name)}</span>`;
+        }
       }
-      const style = color ? `style="background:${color};"` : "";
-      const label = labels.get(idx);
-      const labelHtml = label ? `<span class="cell-label">${escapeHtml(label)}</span>` : "";
       html += `<td class="${cls.join(' ')}" data-key="${key}" ${style}>${labelHtml}</td></tr>`;
       idx++;
     }
@@ -2071,6 +2632,11 @@ function clearDragPreview() {
 }
 
 function attachCellEvents() {
+  // 日付見出し(th)をクリックすると、その日の日付タイプ設定モーダルを開く
+  document.querySelectorAll(".schedule thead th[data-date]").forEach(th => {
+    th.addEventListener("click", () => openDateTypeAssignModal(th.dataset.date));
+  });
+
   document.querySelectorAll(".schedule td.cell").forEach(td => {
     td.addEventListener("pointerdown", e => {
       // 右クリック等は無視
@@ -3078,6 +3644,8 @@ document.getElementById("exportJson").addEventListener("click", () => {
     cellData: cellData,
     cellNotes: cellNotes,
     goalsData: goalsData,
+    dateTypes: dateTypes,
+    dateAssignments: dateAssignments,
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
@@ -3104,17 +3672,23 @@ document.getElementById("fileInput").addEventListener("change", e => {
       if (!data.cellData) throw new Error("不正なフォーマット");
       const goalCount = data.goalsData ? Object.keys(data.goalsData).length : 0;
       const noteCount = data.cellNotes ? Object.keys(data.cellNotes).length : 0;
-      if (!confirm(`インポートすると現在のデータが上書きされます。続行しますか？\n\nセル: ${Object.keys(data.cellData).length}件\nメモ: ${noteCount}件\nパレット: ${(data.palette || []).length}色\n目標: ${goalCount}件`)) return;
+      const typeCount = Array.isArray(data.dateTypes) ? data.dateTypes.length : 0;
+      if (!confirm(`インポートすると現在のデータが上書きされます。続行しますか？\n\nセル: ${Object.keys(data.cellData).length}件\nメモ: ${noteCount}件\nパレット: ${(data.palette || []).length}色\n目標: ${goalCount}件\n日付タイプ: ${typeCount}件`)) return;
       cellData = data.cellData || {};
       cellNotes = data.cellNotes || {};
       if (Array.isArray(data.palette) && data.palette.length > 0) palette = data.palette;
       if (data.goalsData) goalsData = data.goalsData;
+      if (Array.isArray(data.dateTypes)) dateTypes = data.dateTypes;
+      if (data.dateAssignments) dateAssignments = data.dateAssignments;
       saveCellData();
       saveCellNotes();
       savePalette();
       saveGoals();
+      saveDateTypes();
+      saveDateAssignments();
       clearHistory();
       renderPalette();
+      renderDateTypeList();
       render();
       showToast("✅ データを読み込みました");
     } catch (err) {
@@ -3137,6 +3711,7 @@ function showToast(msg) {
 
 // ========== 初期化 ==========
 renderPalette();
+renderDateTypeList();
 setupGoalListeners();
 setView(currentView);
 
