@@ -1,0 +1,2730 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+<title>Paint Schedule — Visual Time Planner</title>
+<meta name="description" content="15分刻み・24時間の塗り絵スケジュール。月次・週次の目標管理、Excel/CSV/PNG出力。" />
+<meta name="theme-color" content="#0f172a" />
+
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%230f172a'/%3E%3Crect x='18' y='28' width='64' height='54' rx='6' fill='none' stroke='%2360a5fa' stroke-width='4'/%3E%3Crect x='28' y='40' width='14' height='10' fill='%23f59e0b'/%3E%3Crect x='46' y='40' width='14' height='10' fill='%2310b981'/%3E%3Crect x='28' y='54' width='32' height='10' fill='%23ef4444'/%3E%3Crect x='64' y='40' width='10' height='24' fill='%23a78bfa'/%3E%3C/svg%3E" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+  :root {
+    /* カラーシステム */
+    --bg-base: #f5f7fa;
+    --bg-panel: #ffffff;
+    --bg-elevated: #fafbfc;
+    --bg-subtle: #f1f4f8;
+
+    --border-subtle: #e5e9f0;
+    --border-default: #d4dae3;
+    --border-strong: #b8c2d0;
+
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-tertiary: #94a3b8;
+    --text-inverse: #ffffff;
+
+    --accent: #2563eb;
+    --accent-hover: #1d4ed8;
+    --accent-light: #dbeafe;
+    --accent-subtle: #eff6ff;
+
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+
+    --sat: #e0f2fe;
+    --sun: #fee2e2;
+    --hour-line: #cbd5e1;
+
+    /* シャドウ */
+    --shadow-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.07), 0 2px 4px -2px rgba(15, 23, 42, 0.05);
+    --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -4px rgba(15, 23, 42, 0.05);
+    --shadow-xl: 0 20px 25px -5px rgba(15, 23, 42, 0.1), 0 8px 10px -6px rgba(15, 23, 42, 0.05);
+
+    /* レイアウト */
+    --radius-sm: 6px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;
+
+    /* フォント */
+    --font-sans: "Inter", "Noto Sans JP", -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic UI", sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg-base);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    font-feature-settings: "cv11", "ss01";
+    -webkit-text-size-adjust: 100%;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    line-height: 1.5;
+  }
+
+  /* ========== ヘッダー ========== */
+  header.app-header {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    color: var(--text-inverse);
+    padding: 16px 24px;
+    box-shadow: var(--shadow-md);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  header .brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  header .brand-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-md);
+    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-md);
+    flex-shrink: 0;
+  }
+  header .brand-icon svg { width: 22px; height: 22px; }
+  header .brand-text h1 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  header .brand-text .tagline {
+    font-size: 11px;
+    opacity: 0.65;
+    margin-top: 1px;
+    font-weight: 400;
+  }
+  header .header-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  header .header-actions .btn {
+    background: rgba(255,255,255,0.08);
+    color: var(--text-inverse);
+    border-color: rgba(255,255,255,0.15);
+  }
+  header .header-actions .btn:hover {
+    background: rgba(255,255,255,0.15);
+    border-color: rgba(255,255,255,0.25);
+  }
+  header .header-actions .btn.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+  header .header-actions .btn.primary:hover { background: var(--accent-hover); }
+
+  /* ========== ツールバー ========== */
+  .toolbar {
+    background: var(--bg-panel);
+    border-bottom: 1px solid var(--border-subtle);
+    padding: 12px 24px;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+    position: sticky;
+    top: 69px;
+    z-index: 90;
+  }
+
+  /* ========== ボタン ========== */
+  .btn {
+    border: 1px solid var(--border-default);
+    background: var(--bg-panel);
+    color: var(--text-primary);
+    border-radius: var(--radius-md);
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    box-shadow: var(--shadow-sm);
+  }
+  .btn:hover {
+    background: var(--accent-subtle);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .btn:active { transform: translateY(1px); }
+  .btn.primary {
+    background: var(--accent);
+    color: var(--text-inverse);
+    border-color: var(--accent);
+  }
+  .btn.primary:hover {
+    background: var(--accent-hover);
+    border-color: var(--accent-hover);
+    color: var(--text-inverse);
+  }
+  .btn.ghost {
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+  }
+  .btn.ghost:hover { background: var(--bg-subtle); }
+  .btn .icon { width: 14px; height: 14px; flex-shrink: 0; }
+  .btn.icon-only {
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 50%;
+  }
+  .btn.icon-only .icon { width: 17px; height: 17px; }
+
+  .nav-btn {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  /* ========== ビュータブ ========== */
+  .view-tabs {
+    display: inline-flex;
+    background: var(--bg-subtle);
+    border-radius: var(--radius-md);
+    padding: 3px;
+    gap: 2px;
+  }
+  .view-tabs button {
+    border: none;
+    background: transparent;
+    padding: 6px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    color: var(--text-secondary);
+    border-radius: 5px;
+    transition: all 0.15s;
+  }
+  .view-tabs button:hover { color: var(--text-primary); }
+  .view-tabs button.active {
+    background: var(--bg-panel);
+    color: var(--accent);
+    box-shadow: var(--shadow-sm);
+  }
+
+  /* ========== 日付ピッカー ========== */
+  input[type="date"] {
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    padding: 7px 10px;
+    font-size: 13px;
+    font-family: inherit;
+    background: var(--bg-panel);
+    color: var(--text-primary);
+    box-shadow: var(--shadow-sm);
+  }
+  input[type="date"]:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-light);
+  }
+
+  /* ========== メニュー ========== */
+  .menu-wrap { position: relative; }
+  .menu-dropdown {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    background: var(--bg-panel);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-xl);
+    min-width: 220px;
+    z-index: 200;
+    display: none;
+    overflow: hidden;
+    padding: 6px;
+  }
+  .menu-dropdown.show { display: block; }
+  .menu-dropdown button {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    text-align: left;
+    border: none;
+    background: transparent;
+    padding: 9px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    color: var(--text-primary);
+    border-radius: var(--radius-sm);
+    transition: background 0.1s;
+  }
+  .menu-dropdown button:hover { background: var(--bg-subtle); }
+  .menu-dropdown button.danger { color: var(--danger); }
+  .menu-dropdown button.danger:hover { background: #fef2f2; }
+  .menu-dropdown .menu-divider {
+    height: 1px;
+    background: var(--border-subtle);
+    margin: 4px 0;
+  }
+
+  /* ========== レイアウト ========== */
+  .layout {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    gap: 16px;
+    padding: 16px 24px;
+    max-width: 1440px;
+    margin: 0 auto;
+  }
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; padding: 12px; }
+    .toolbar { padding: 12px; }
+    header.app-header { padding: 12px 16px; }
+  }
+
+  /* ========== サイドバー（パレット＋目標） ========== */
+  .sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    position: sticky;
+    top: 134px;
+    align-self: start;
+    max-height: calc(100vh - 150px);
+    overflow-y: auto;
+  }
+  @media (max-width: 900px) {
+    .sidebar { position: static; max-height: none; }
+  }
+
+  .card {
+    background: var(--bg-panel);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: 16px;
+    box-shadow: var(--shadow-sm);
+  }
+  .card h2 {
+    margin: 0 0 12px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .card h2 .badge {
+    background: var(--accent-subtle);
+    color: var(--accent);
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    letter-spacing: 0;
+    font-weight: 600;
+  }
+
+  /* ========== 目標カード ========== */
+  .goal-card .goal-label {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    margin-bottom: 4px;
+    font-weight: 500;
+  }
+  .goal-card textarea {
+    width: 100%;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--text-primary);
+    background: var(--bg-elevated);
+    resize: vertical;
+    min-height: 60px;
+    transition: all 0.15s;
+    line-height: 1.5;
+  }
+  .goal-card textarea:focus {
+    outline: none;
+    background: var(--bg-panel);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-light);
+  }
+  .goal-card textarea::placeholder {
+    color: var(--text-tertiary);
+    font-size: 12px;
+  }
+  .goal-group { margin-bottom: 12px; }
+  .goal-group:last-child { margin-bottom: 0; }
+
+  /* ========== パレット ========== */
+  .palette-hint {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    margin-bottom: 12px;
+    line-height: 1.6;
+    background: var(--bg-subtle);
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+  }
+  .palette-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .palette-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px;
+    border: 2px solid transparent;
+    border-radius: var(--radius-md);
+    transition: all 0.12s;
+  }
+  .palette-item:hover { background: var(--bg-subtle); }
+  .palette-apply-btn {
+    flex-shrink: 0;
+    padding: 0;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    transition: transform 0.1s;
+  }
+  .palette-apply-btn:hover { transform: scale(1.08); }
+  .palette-apply-btn:active { transform: scale(0.95); }
+  .swatch {
+    width: 26px;
+    height: 26px;
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(15, 23, 42, 0.1);
+    flex-shrink: 0;
+    display: block;
+    box-shadow: inset 0 1px 2px rgba(255,255,255,0.4);
+  }
+  .swatch-edit {
+    width: 14px;
+    height: 14px;
+    padding: 0;
+    border: 1px solid var(--border-default);
+    border-radius: 4px;
+    cursor: pointer;
+    flex-shrink: 0;
+    background: transparent;
+  }
+  .palette-item input[type="text"] {
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--text-primary);
+    padding: 4px 6px;
+    min-width: 0;
+    outline: none;
+    font-weight: 500;
+    border-radius: var(--radius-sm);
+  }
+  .palette-item input[type="text"]:focus {
+    background: var(--bg-panel);
+    box-shadow: 0 0 0 2px var(--accent-light);
+  }
+  .palette-del-btn {
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    border: none;
+    background: transparent;
+    color: var(--text-tertiary);
+    font-size: 12px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+  .palette-del-btn:hover {
+    background: #fef2f2;
+    color: var(--danger);
+  }
+  .palette-actions {
+    margin-top: 10px;
+    display: flex;
+    gap: 6px;
+  }
+  .palette-actions .btn {
+    flex: 1;
+    font-size: 11px;
+    padding: 6px 8px;
+  }
+
+  /* ========== スケジュール ========== */
+  .schedule-wrap {
+    background: var(--bg-panel);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .schedule-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .schedule-header .view-label {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: -0.01em;
+  }
+  .schedule-header .view-label .year-month {
+    color: var(--text-tertiary);
+    font-weight: 500;
+    margin-right: 8px;
+    font-size: 14px;
+  }
+  .schedule-header .note {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .schedule-scroll {
+    overflow-x: auto;
+    overflow-y: auto;
+    max-height: calc(100vh - var(--sticky-offset, 69px) - 160px);
+    -webkit-overflow-scrolling: touch;
+    border-radius: var(--radius-md);
+  }
+
+  .schedule {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    table-layout: fixed;
+    user-select: none;
+  }
+  .schedule.week { min-width: 600px; }
+  .schedule.day { min-width: 320px; }
+  .schedule.month { min-width: 720px; }
+
+  .schedule th, .schedule td {
+    border-right: 1px solid var(--border-subtle);
+    border-bottom: 1px solid var(--border-subtle);
+    text-align: center;
+    padding: 0;
+  }
+  .schedule th:first-child, .schedule td:first-child {
+    border-left: 1px solid var(--border-subtle);
+  }
+  .schedule thead tr:first-child th { border-top: 1px solid var(--border-subtle); }
+
+  .schedule thead th {
+    background: var(--bg-elevated);
+    color: var(--text-secondary);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 10px 4px;
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .schedule thead th .day-num {
+    display: block;
+    font-size: 16px;
+    color: var(--text-primary);
+    font-weight: 700;
+    margin-top: 2px;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  .schedule thead th.sat .day-num { color: #0284c7; }
+  .schedule thead th.sun .day-num { color: #dc2626; }
+  .schedule thead th.today {
+    background: var(--accent-subtle);
+    color: var(--accent);
+  }
+  .schedule thead th.today .day-num { color: var(--accent); }
+
+  .schedule th.time-col, .schedule td.time-col {
+    width: 56px;
+    font-size: 10px;
+    color: var(--text-tertiary);
+    background: var(--bg-elevated);
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+  }
+  .schedule td.time-col.hour-mark {
+    color: var(--text-secondary);
+    font-weight: 600;
+    border-top: 1px solid var(--hour-line);
+  }
+
+  .schedule td.cell {
+    height: 14px;
+    cursor: pointer;
+    transition: filter 0.1s;
+    background: var(--bg-panel);
+    touch-action: none;
+    position: relative;
+  }
+  .schedule.day td.cell { height: 22px; }
+  .schedule td.cell.hour-top { border-top: 1px solid var(--hour-line); }
+  .schedule td.cell.sat:not(.colored) { background: var(--sat); }
+  .schedule td.cell.sun:not(.colored) { background: var(--sun); }
+  .schedule td.cell:hover { filter: brightness(0.92); }
+
+  /* セル内ラベル（同色ブロックの中央に1回だけ表示するカテゴリ名） */
+  .cell-label {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 3px;
+    font-size: 8px;
+    line-height: 1;
+    font-weight: 600;
+    color: rgba(15, 23, 42, 0.72);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none;
+    text-shadow: 0 1px 1px rgba(255,255,255,0.35);
+  }
+  .schedule.day .cell-label {
+    font-size: 11px;
+    padding: 0 6px;
+  }
+
+  /* 月ビュー */
+  .schedule.month td.day-cell {
+    height: 92px;
+    vertical-align: top;
+    padding: 6px 8px;
+    cursor: pointer;
+    position: relative;
+    text-align: left;
+    background: var(--bg-panel);
+    transition: background 0.12s;
+  }
+  .schedule.month td.day-cell.other-month {
+    background: var(--bg-elevated);
+    color: var(--text-tertiary);
+  }
+  .schedule.month td.day-cell .date-num {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+    display: inline-block;
+  }
+  .schedule.month td.day-cell.other-month .date-num { color: var(--text-tertiary); font-weight: 500; }
+  .schedule.month td.day-cell.today .date-num {
+    color: var(--text-inverse);
+    background: var(--accent);
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    box-shadow: var(--shadow-sm);
+  }
+  .schedule.month td.day-cell.sat .date-num { color: #0284c7; }
+  .schedule.month td.day-cell.sun .date-num { color: #dc2626; }
+  .schedule.month .color-bar-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    margin-top: 4px;
+  }
+  .schedule.month .color-bar {
+    height: 6px;
+    border-radius: 3px;
+    min-width: 6px;
+    flex: 1 1 auto;
+  }
+  .schedule.month .day-total {
+    font-size: 10px;
+    color: var(--text-tertiary);
+    margin-top: 4px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  .schedule.month td.day-cell:hover { background: var(--accent-subtle); }
+  .schedule.month td.day-cell:hover.other-month { background: var(--bg-subtle); }
+
+  /* ステータスバー */
+  .status-bar {
+    background: var(--bg-panel);
+    border-top: 1px solid var(--border-subtle);
+    padding: 12px 24px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  .status-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-variant-numeric: tabular-nums;
+  }
+  .status-item.mode {
+    font-weight: 600;
+    color: var(--text-primary);
+    padding: 4px 10px;
+    background: var(--accent-subtle);
+    color: var(--accent);
+    border-radius: 12px;
+  }
+  .status-item .swatch-mini {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    border: 1px solid rgba(15,23,42,0.1);
+  }
+  .status-total {
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  /* トースト */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--text-primary);
+    color: var(--text-inverse);
+    padding: 12px 20px;
+    border-radius: 24px;
+    font-size: 13px;
+    font-weight: 500;
+    z-index: 1000;
+    box-shadow: var(--shadow-xl);
+    opacity: 0;
+    transition: all 0.25s ease;
+  }
+  .toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+
+  /* 飛び石選択（Cmd/Ctrl+クリック）の確定バー */
+  .multiselect-bar {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--text-primary);
+    color: var(--text-inverse);
+    padding: 10px 12px 10px 18px;
+    border-radius: 28px;
+    font-size: 13px;
+    font-weight: 500;
+    z-index: 1500;
+    box-shadow: var(--shadow-xl);
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .multiselect-bar.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .multiselect-bar .btn {
+    padding: 7px 14px;
+    font-size: 12.5px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 18px;
+    cursor: pointer;
+    font-weight: 600;
+  }
+  .multiselect-bar .btn.ghost {
+    background: rgba(255,255,255,0.12);
+    color: var(--text-inverse);
+  }
+  .multiselect-bar .btn.danger-ghost {
+    background: rgba(248,113,113,0.18);
+    color: #fca5a5;
+  }
+  .multiselect-bar .btn.danger-ghost:hover {
+    background: rgba(248,113,113,0.3);
+  }
+
+  /* 選択中セル */
+  .schedule td.cell.selecting {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+    position: relative;
+    z-index: 1;
+  }
+  .schedule td.cell.selecting:not(.colored) {
+    background: var(--accent-light) !important;
+  }
+  .schedule td.cell.colored.selecting {
+    cursor: move;
+  }
+  .schedule td.cell.drag-preview {
+    outline: 2px dashed var(--accent);
+    outline-offset: -2px;
+    opacity: 0.85;
+  }
+
+  /* セル選択モーダル */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    padding: 16px;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal-card {
+    background: var(--bg-panel);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-xl);
+    width: 100%;
+    max-width: 380px;
+    max-height: 86vh;
+    overflow-y: auto;
+    padding: 20px;
+  }
+  .modal-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 4px;
+  }
+  .modal-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+  .modal-range {
+    font-size: 12px;
+    color: var(--text-tertiary);
+    margin-bottom: 14px;
+    font-variant-numeric: tabular-nums;
+  }
+  .modal-section-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-tertiary);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin: 14px 0 6px;
+  }
+  .modal-section-label:first-of-type { margin-top: 0; }
+  .modal-palette-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  .modal-palette-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border: 1.5px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    background: var(--bg-elevated);
+    transition: all 0.12s;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--text-primary);
+    text-align: left;
+    min-width: 0;
+  }
+  .modal-palette-item:hover {
+    border-color: var(--accent);
+    background: var(--accent-subtle);
+  }
+  .modal-palette-item .swatch-mini {
+    width: 18px;
+    height: 18px;
+    border-radius: 5px;
+    border: 1px solid rgba(15,23,42,0.12);
+    flex-shrink: 0;
+  }
+  .modal-palette-item span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .modal-eraser-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px;
+    border: 1.5px dashed var(--border-default);
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+  .modal-eraser-btn:hover {
+    border-color: var(--danger);
+    color: var(--danger);
+    background: #fef2f2;
+  }
+  .modal-custom-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .modal-custom-row input[type="color"] {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .modal-custom-row input[type="text"] {
+    flex: 1;
+    min-width: 0;
+    padding: 9px 10px;
+    border: 1.5px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--text-primary);
+    outline: none;
+    background: var(--bg-elevated);
+  }
+  .modal-custom-row input[type="text"]:focus {
+    border-color: var(--accent);
+    background: var(--bg-panel);
+  }
+  .modal-custom-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .modal-custom-actions label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11.5px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    user-select: none;
+  }
+  .modal-custom-actions label input[type="checkbox"] {
+    cursor: pointer;
+  }
+  .modal-apply-btn {
+    flex-shrink: 0;
+    margin-left: auto;
+    padding: 9px 16px;
+    border: none;
+    border-radius: var(--radius-md);
+    background: var(--accent);
+    color: white;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.12s;
+  }
+  .modal-apply-btn:hover { background: var(--accent-hover); }
+  .modal-apply-btn:disabled {
+    background: var(--border-default);
+    cursor: not-allowed;
+  }
+  .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border-subtle);
+  }
+  .modal-cancel-btn {
+    padding: 9px 14px;
+    border: none;
+    background: transparent;
+    color: var(--text-tertiary);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .modal-cancel-btn:hover { color: var(--text-secondary); }
+
+  /* ヘルプモーダル */
+  .help-modal-card {
+    max-width: 560px;
+    max-height: 82vh;
+  }
+  .help-modal-card .modal-header {
+    margin-bottom: 14px;
+    align-items: center;
+  }
+  .help-close-btn {
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: transparent;
+    color: var(--text-tertiary);
+    font-size: 14px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.12s;
+    flex-shrink: 0;
+  }
+  .help-close-btn:hover {
+    background: var(--bg-subtle);
+    color: var(--text-secondary);
+  }
+  .help-section {
+    margin-bottom: 18px;
+  }
+  .help-section:last-of-type { margin-bottom: 0; }
+  .help-section h3 {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 8px;
+  }
+  .help-section p {
+    font-size: 13px;
+    line-height: 1.65;
+    color: var(--text-secondary);
+    margin: 0 0 8px;
+  }
+  .help-section ul {
+    margin: 0 0 8px;
+    padding-left: 20px;
+  }
+  .help-section li {
+    font-size: 13px;
+    line-height: 1.65;
+    color: var(--text-secondary);
+    margin-bottom: 5px;
+  }
+  .help-section b { color: var(--text-primary); font-weight: 700; }
+  .help-note {
+    background: var(--accent-subtle);
+    border-radius: var(--radius-md);
+    padding: 10px 12px;
+    font-size: 12.5px;
+    color: var(--text-secondary);
+  }
+
+  @media (max-width: 600px) {
+    header.app-header .brand-text h1 { font-size: 14px; }
+    header.app-header .brand-text .tagline { display: none; }
+    .toolbar { padding: 8px 12px; gap: 8px; }
+    .btn { padding: 7px 11px; font-size: 12px; }
+    .schedule th.time-col, .schedule td.time-col { width: 46px; font-size: 9px; }
+    .schedule.week { min-width: 520px; }
+    .schedule-wrap { padding: 14px; }
+    .schedule.month td.day-cell { height: 64px; padding: 4px 5px; }
+    .schedule.month td.day-cell .date-num { font-size: 11px; margin-bottom: 3px; }
+    .schedule.month td.day-cell.today .date-num { width: 20px; height: 20px; font-size: 10px; }
+    .schedule.month .day-total { font-size: 9px; }
+    .schedule-header .view-label { font-size: 15px; }
+  }
+
+  body.exporting .schedule-wrap { box-shadow: none !important; }
+  body.exporting .sidebar { display: none; }
+
+  /* スクロールバー */
+  .sidebar::-webkit-scrollbar,
+  .schedule-scroll::-webkit-scrollbar { height: 8px; width: 8px; }
+  .sidebar::-webkit-scrollbar-thumb,
+  .schedule-scroll::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
+  .sidebar::-webkit-scrollbar-track,
+  .schedule-scroll::-webkit-scrollbar-track { background: transparent; }
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="brand">
+    <div class="brand-icon">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="3" y="5" width="18" height="16" rx="2" stroke="white" stroke-width="2"/>
+        <rect x="6" y="9" width="4" height="3" fill="#fbbf24"/>
+        <rect x="11" y="9" width="4" height="3" fill="#34d399"/>
+        <rect x="16" y="9" width="2" height="7" fill="#a78bfa"/>
+        <rect x="6" y="13" width="9" height="3" fill="#f87171"/>
+        <rect x="6" y="17" width="6" height="2" fill="#60a5fa"/>
+      </svg>
+    </div>
+    <div class="brand-text">
+      <h1>Paint Schedule</h1>
+      <div class="tagline">Visual Time Planner — 15分刻みで見える時間管理</div>
+    </div>
+  </div>
+  <div class="header-actions">
+    <button class="btn icon-only" id="helpBtn" title="使い方ヘルプ">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M9.09 9a3 3 0 1 1 5.83 1c0 2-3 2.5-3 4.5"/>
+        <line x1="12" y1="17.5" x2="12" y2="17.51"/>
+      </svg>
+    </button>
+    <button class="btn primary" id="exportPng" title="現在のビューをPNG画像で保存">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="3" width="18" height="18" rx="2"/>
+        <circle cx="8.5" cy="8.5" r="1.5"/>
+        <polyline points="21 15 16 10 5 21"/>
+      </svg>
+      PNG出力
+    </button>
+    <div class="menu-wrap">
+      <button class="btn" id="menuBtn" title="メニュー">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="6" x2="21" y2="6"/>
+          <line x1="3" y1="12" x2="21" y2="12"/>
+          <line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+        メニュー
+      </button>
+      <div class="menu-dropdown" id="menuDropdown">
+        <button id="exportExcel">📊 Excel(.xlsx)で保存</button>
+        <button id="exportCsv">📄 CSVで保存</button>
+        <div class="menu-divider"></div>
+        <button id="exportJson">💾 JSONバックアップ</button>
+        <button id="importJson">📂 JSON読み込み</button>
+        <div class="menu-divider"></div>
+        <button id="clearView" class="danger">🗑️ この期間をクリア</button>
+        <button id="clearAll" class="danger">⚠️ 全データを削除</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="toolbar">
+  <div class="view-tabs">
+    <button data-view="day" id="viewDay">日</button>
+    <button data-view="week" id="viewWeek" class="active">週</button>
+    <button data-view="month" id="viewMonth">月</button>
+  </div>
+  <div style="display:flex;gap:6px;align-items:center;">
+    <button class="btn nav-btn" id="prevBtn" title="前へ">‹</button>
+    <input type="date" id="datePicker" />
+    <button class="btn nav-btn" id="nextBtn" title="次へ">›</button>
+    <button class="btn" id="todayBtn">今日</button>
+  </div>
+</div>
+
+<input type="file" id="fileInput" accept=".json" style="display:none;" />
+
+<div class="layout">
+  <aside class="sidebar">
+    <!-- 月の目標 -->
+    <div class="card goal-card">
+      <h2>🎯 月の目標 <span class="badge" id="monthBadge">—</span></h2>
+      <div class="goal-group">
+        <div class="goal-label">今月達成したいこと</div>
+        <textarea id="monthGoal" placeholder="例：&#10;・プロジェクトAをリリース&#10;・英語学習30時間&#10;・読書3冊"></textarea>
+      </div>
+    </div>
+
+    <!-- 週の目標 -->
+    <div class="card goal-card">
+      <h2>📌 週の目標 <span class="badge" id="weekBadge">—</span></h2>
+      <div class="goal-group">
+        <div class="goal-label">今週フォーカスすること</div>
+        <textarea id="weekGoal" placeholder="例：&#10;・水曜の提案資料完成&#10;・毎朝1h 英語&#10;・木金は深夜作業ゼロ"></textarea>
+      </div>
+    </div>
+
+    <!-- パレット -->
+    <div class="card">
+      <h2>🎨 カテゴリ</h2>
+      <div class="palette-hint">
+        グリッドをクリック／Shift+クリック／Cmd(Ctrl)+クリック／ドラッグでコマを選択（まだ色は付きません）。選んだ状態で、左の色見本をクリックすると即適用。ダブルクリックや画面下の確定バーからも選べます。
+      </div>
+      <div class="palette-list" id="paletteList"></div>
+      <div class="palette-actions">
+        <button class="btn" id="resetPaletteBtn">色をリセット</button>
+      </div>
+    </div>
+  </aside>
+
+  <main class="schedule-wrap" id="scheduleWrap">
+    <div class="schedule-header">
+      <div class="view-label" id="viewLabel">—</div>
+      <div class="note" id="viewNote">💡 選択はクリック／Shift/Cmd+クリック／ドラッグ。確定はダブルクリックか左の色見本</div>
+    </div>
+    <div class="schedule-scroll">
+      <table class="schedule week" id="scheduleTable"></table>
+    </div>
+  </main>
+</div>
+
+<div class="status-bar" id="status">準備中...</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="multiselect-bar" id="multiselectBar">
+  <span id="multiselectCount">0コマ選択中</span>
+  <button type="button" class="btn ghost" id="multiselectClear">選択解除</button>
+  <button type="button" class="btn danger-ghost" id="multiselectDelete">🧽 削除</button>
+  <button type="button" class="btn" id="multiselectConfirm">カテゴリを選ぶ</button>
+</div>
+
+<div class="modal-overlay" id="cellModalOverlay">
+  <div class="modal-card">
+    <div class="modal-header">
+      <span class="modal-title">この時間帯に何を割り当てますか？</span>
+    </div>
+    <div class="modal-range" id="modalRange"></div>
+
+    <div class="modal-section-label">パレットから選ぶ</div>
+    <div class="modal-palette-grid" id="modalPaletteGrid"></div>
+
+    <div class="modal-section-label">その場で新しい色を作る</div>
+    <div class="modal-custom-row">
+      <input type="color" id="modalCustomColor" value="#60A5FA" />
+      <input type="text" id="modalCustomName" placeholder="名前（例：ジム、英語学習）" maxlength="20" />
+      <button type="button" class="modal-apply-btn" id="modalCustomApply">適用</button>
+    </div>
+    <div class="modal-custom-actions">
+      <label><input type="checkbox" id="modalCustomSave" checked /> パレットにも保存する</label>
+    </div>
+
+    <div class="modal-section-label">消去</div>
+    <button type="button" class="modal-eraser-btn" id="modalEraseBtn">🧽 この範囲を消去する</button>
+
+    <div class="modal-footer">
+      <button type="button" class="modal-cancel-btn" id="modalCancelBtn">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="helpOverlay">
+  <div class="modal-card help-modal-card">
+    <div class="modal-header">
+      <span class="modal-title">📖 使い方ガイド</span>
+      <button type="button" class="help-close-btn" id="helpCloseBtn" aria-label="閉じる">✕</button>
+    </div>
+
+    <div class="help-section">
+      <h3>🖱️ 選ぶ（まだ色は付きません）</h3>
+      <ul>
+        <li><b>クリック</b>：そのコマだけを仮選択</li>
+        <li><b>Shift＋クリック</b>：直前の仮選択の起点から、今クリックしたコマまでの<b>連続する範囲</b>に仮選択を伸ばす。Shift＋クリックを繰り返せば、その都度範囲を伸ばせます</li>
+        <li><b>Cmd（Mac）／Ctrl（Win）＋クリック</b>：<b>不連続な複数コマ</b>を1つずつ仮選択に追加／削除（飛び石選択）</li>
+        <li><b>ドラッグ</b>：ドラッグした範囲をまとめて仮選択</li>
+      </ul>
+      <p class="help-note">これらの操作はどれも「仮選択」を作る・伸ばすだけで、まだ色は付きません。色を付ける・消すには、下記いずれかの方法で<b>確定</b>してください。</p>
+    </div>
+
+    <div class="help-section">
+      <h3>✅ 確定する（色を付ける・消す・編集する）</h3>
+      <ul>
+        <li><b>左パネルの色見本をクリック</b>：仮選択しているコマに、ポップアップを開かずその色を即適用</li>
+        <li><b>仮選択中のコマをダブルクリック</b>：カテゴリ選択ポップアップを開く（新しい色・名前もその場で作成できます）</li>
+        <li><b>画面下に出る確定バーの「カテゴリを選ぶ」</b>：同じくポップアップを開く</li>
+        <li><b>確定バーの「🧽 削除」、または Backspace／Delete キー</b>：仮選択中のコマを消去</li>
+        <li><b>確定バーの「選択解除」</b>：何もせず仮選択をクリア</li>
+      </ul>
+    </div>
+
+    <div class="help-section">
+      <h3>↔️ 既存の予定を移動する</h3>
+      <p>すでに色が付いているコマを選択した状態で、その選択範囲を<b>もう一度ドラッグ</b>すると、そのままの形を保って別の時間帯・別の日に移動できます（コマの数や飛び石の間隔も保たれます）。</p>
+    </div>
+
+    <div class="help-section">
+      <h3>⌨️ キーボードショートカット</h3>
+      <ul>
+        <li><b>Backspace</b> または <b>Delete</b>：仮選択中のコマを消去</li>
+        <li><b>Cmd/Ctrl + Z</b>：ひとつ前に戻す（Undo）</li>
+        <li><b>Cmd/Ctrl + Shift + Z</b> または <b>Cmd/Ctrl + Y</b>：やり直す（Redo）</li>
+        <li><b>Cmd/Ctrl + C</b>：仮選択中の範囲をコピー</li>
+        <li><b>Cmd/Ctrl + X</b>：仮選択中の範囲を切り取り（コピーしてから消去）</li>
+        <li><b>Cmd/Ctrl + V</b>：直前に操作したコマを起点に、コピー／切り取りした形をそのまま貼り付け（飛び石の形も再現されます）</li>
+      </ul>
+      <p class="help-note">これらは仮選択がある状態（まだポップアップを開いていない状態）で使えます。ポップアップが開いた状態や、目標・カテゴリ名の入力中はショートカットは作動しません。</p>
+    </div>
+
+    <div class="help-section">
+      <h3>🏷️ カテゴリ（左パネル）</h3>
+      <p>大きい色見本をクリックすると、仮選択中のコマにその色を即適用します。隣の小さな四角（色ピッカー）をクリックすると色自体を変更でき、名前欄をクリックすると名前を変更できます（どちらも即時反映）。✕ボタンでカテゴリ自体を削除できます（最低1色は残ります）。</p>
+    </div>
+
+    <div class="help-section">
+      <h3>🎯 目標欄</h3>
+      <p>左側に「月の目標」「週の目標」の入力欄があります。その月・週でやりたいことを書いておくと、PNG／Excel／CSV出力にも一緒に含まれます。</p>
+    </div>
+
+    <div class="help-section">
+      <h3>📆 3つのビュー</h3>
+      <p><b>日</b>＝1日を詳細表示、<b>週</b>＝月〜日を一覧（メイン）、<b>月</b>＝カレンダー形式で各日の色配分をバーで表示。月表示で日付セルをクリックすると、その日の日表示に移動します。</p>
+    </div>
+
+    <div class="help-section">
+      <h3>💾 データの保存場所（重要）</h3>
+      <p>このアプリにサーバーはありません。塗った内容・カテゴリ・目標は、すべて<b>今使っているブラウザのlocalStorage</b>という保存領域に自動で書き込まれています。リロードしても残るのはこのためです。</p>
+      <p class="help-note">裏を返すと、<b>ブラウザを変える／PCを買い替える／ブラウザのデータを消す</b>と、このデータは復元できません。下の「JSONバックアップ」を定期的に取っておくのがおすすめです。</p>
+    </div>
+
+    <div class="help-section">
+      <h3>📂 メニューの書き出し・読み込み機能</h3>
+      <ul>
+        <li><b>📷 PNG出力</b>：今見ているビュー（目標＋スケジュール＋集計）を1枚の画像として保存</li>
+        <li><b>📊 Excel(.xlsx)で保存</b>：目標／スケジュール／集計／パレットの4シート構成で保存</li>
+        <li><b>📄 CSVで保存</b>：表形式データを保存（目標コメント付き）</li>
+        <li><b>💾 JSONバックアップ</b>：今のデータ全部（カテゴリ・塗った内容・目標）を1つのファイルに書き出す。<b>これが唯一の「お引っ越し用」データです</b>。別のPC・ブラウザに移すときは、このファイルを保存しておいて、新しい環境で「📂 JSON読み込み」から読み込めば元通りになります</li>
+        <li><b>🗑️ この期間をクリア／⚠️ 全データを削除</b>：取り消せないので、必要ならJSONバックアップを先に取ってから実行してください</li>
+      </ul>
+    </div>
+
+    <div class="modal-footer">
+      <button type="button" class="modal-cancel-btn" id="helpCloseBtn2">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ========== 設定 ==========
+const STORAGE_KEY = "paint_schedule_v3";
+const PALETTE_KEY = "paint_schedule_palette_v3";
+const VIEW_KEY = "paint_schedule_view_v3";
+const GOALS_KEY = "paint_schedule_goals_v3";
+const JP_WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
+const DEFAULT_PALETTE = [
+  { color: "#FCA5A5", name: "重要業務A" },
+  { color: "#FDBA74", name: "業務B" },
+  { color: "#FCD34D", name: "学習・自己投資" },
+  { color: "#86EFAC", name: "ルーチン" },
+  { color: "#7DD3FC", name: "会議・打合せ" },
+  { color: "#C4B5FD", name: "創造・企画" },
+  { color: "#F9A8D4", name: "プライベート" },
+  { color: "#CBD5E1", name: "休憩・睡眠" },
+];
+
+// ========== 状態 ==========
+let palette = loadPalette();
+let currentDate = new Date(); currentDate.setHours(0,0,0,0);
+let currentView = localStorage.getItem(VIEW_KEY) || "week";
+let cellData = loadCellData();
+let goalsData = loadGoals();
+
+// ========== ストレージ ==========
+function loadCellData() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); }
+  catch { return {}; }
+}
+function saveCellData() { localStorage.setItem(STORAGE_KEY, JSON.stringify(cellData)); }
+
+function loadPalette() {
+  try {
+    const p = JSON.parse(localStorage.getItem(PALETTE_KEY));
+    if (Array.isArray(p) && p.length > 0) return p;
+  } catch {}
+  return JSON.parse(JSON.stringify(DEFAULT_PALETTE));
+}
+function savePalette() { localStorage.setItem(PALETTE_KEY, JSON.stringify(palette)); }
+
+function loadGoals() {
+  try { return JSON.parse(localStorage.getItem(GOALS_KEY) || "{}"); }
+  catch { return {}; }
+}
+function saveGoals() { localStorage.setItem(GOALS_KEY, JSON.stringify(goalsData)); }
+
+// ========== 日付 ==========
+function getMondayOf(d) {
+  const date = new Date(d);
+  date.setHours(0, 0, 0, 0);
+  const day = date.getDay();
+  date.setDate(date.getDate() + (day === 0 ? -6 : 1 - day));
+  return date;
+}
+function fmtDate(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
+function addDays(d, n) { const r = new Date(d); r.setDate(r.getDate() + n); return r; }
+function addMonths(d, n) { const r = new Date(d); r.setMonth(r.getMonth() + n); return r; }
+function isSameDay(a, b) {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+function getMonthKey(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`; }
+function getWeekKey(d) { return `W${fmtDate(getMondayOf(d))}`; }
+
+// セルキー "YYYY-MM-DD_HHMM" ⇔ 絶対15分スロット番号（コピー＆ペーストの相対位置計算に使用）
+// タイムゾーンの影響を受けないよう、日付部分はUTC基準の日数として扱う（相対差分の計算にしか使わないため、絶対値そのものに意味はない）
+function keyToSlot(key) {
+  const [dateStr, timeStr] = key.split("_");
+  const [y, mo, da] = dateStr.split("-").map(Number);
+  const dayIndex = Math.round(Date.UTC(y, mo - 1, da) / 86400000);
+  const h = parseInt(timeStr.slice(0, 2), 10);
+  const m = parseInt(timeStr.slice(2, 4), 10);
+  return dayIndex * 96 + h * 4 + (m / 15);
+}
+function slotToKey(slot) {
+  const dayIndex = Math.floor(slot / 96);
+  const slotInDay = ((slot % 96) + 96) % 96; // 負数対策
+  const d = new Date(dayIndex * 86400000); // UTC基準で生成したdayIndexをそのままミリ秒に戻す
+  const y = d.getUTCFullYear(), mo = d.getUTCMonth() + 1, da = d.getUTCDate();
+  const h = Math.floor(slotInDay / 4);
+  const m = (slotInDay % 4) * 15;
+  const dateStr = `${y}-${String(mo).padStart(2,"0")}-${String(da).padStart(2,"0")}`;
+  return `${dateStr}_${String(h).padStart(2,"0")}${String(m).padStart(2,"0")}`;
+}
+
+// ========== 目標 ==========
+function loadCurrentGoals() {
+  const monthKey = getMonthKey(currentDate);
+  const weekKey = getWeekKey(currentDate);
+  document.getElementById("monthGoal").value = goalsData[monthKey] || "";
+  document.getElementById("weekGoal").value = goalsData[weekKey] || "";
+
+  const monday = getMondayOf(currentDate);
+  const sunday = addDays(monday, 6);
+  document.getElementById("monthBadge").textContent = `${currentDate.getFullYear()}/${currentDate.getMonth()+1}`;
+  document.getElementById("weekBadge").textContent = `${monday.getMonth()+1}/${monday.getDate()}–${sunday.getMonth()+1}/${sunday.getDate()}`;
+}
+function setupGoalListeners() {
+  document.getElementById("monthGoal").addEventListener("input", e => {
+    goalsData[getMonthKey(currentDate)] = e.target.value;
+    saveGoals();
+  });
+  document.getElementById("weekGoal").addEventListener("input", e => {
+    goalsData[getWeekKey(currentDate)] = e.target.value;
+    saveGoals();
+  });
+}
+
+// ========== パレット描画（編集パネル） ==========
+function renderPalette() {
+  const list = document.getElementById("paletteList");
+  list.innerHTML = "";
+  palette.forEach((p, i) => {
+    const item = document.createElement("div");
+    item.className = "palette-item";
+
+    const applyBtn = document.createElement("button");
+    applyBtn.type = "button";
+    applyBtn.className = "palette-apply-btn";
+    applyBtn.title = "選択中のコマにこの色を適用";
+    applyBtn.innerHTML = `<span class="swatch" style="background:${p.color};"></span>`;
+    applyBtn.addEventListener("click", () => applyPaletteColorToProvisional(p.color));
+
+    const sw = document.createElement("input");
+    sw.type = "color";
+    sw.value = p.color;
+    sw.className = "swatch-edit";
+    sw.title = "色を編集";
+    sw.addEventListener("input", e => {
+      palette[i].color = e.target.value;
+      applyBtn.querySelector(".swatch").style.background = e.target.value;
+      savePalette();
+      refreshColoredCellLabels();
+    });
+
+    const name = document.createElement("input");
+    name.type = "text";
+    name.value = p.name;
+    name.placeholder = "カテゴリ名";
+    name.addEventListener("input", e => {
+      palette[i].name = e.target.value;
+      savePalette();
+    });
+
+    const del = document.createElement("button");
+    del.type = "button";
+    del.className = "palette-del-btn";
+    del.innerHTML = "✕";
+    del.title = "このカテゴリを削除";
+    del.addEventListener("click", () => {
+      if (palette.length <= 1) { showToast("最低1色は必要です"); return; }
+      palette.splice(i, 1);
+      savePalette();
+      renderPalette();
+    });
+
+    item.appendChild(applyBtn);
+    item.appendChild(sw);
+    item.appendChild(name);
+    item.appendChild(del);
+    list.appendChild(item);
+  });
+}
+
+// パレットの色名を変更した際、すでに塗られているセルの集計表示（カテゴリ名）を最新化
+function refreshColoredCellLabels() {
+  updateStatus();
+}
+
+// ========== ビュー切替 ==========
+function setView(v) {
+  currentView = v;
+  localStorage.setItem(VIEW_KEY, v);
+  document.querySelectorAll(".view-tabs button").forEach(b => {
+    b.classList.toggle("active", b.dataset.view === v);
+  });
+  clearProvisionalSelection();
+  render();
+}
+
+function render() {
+  const table = document.getElementById("scheduleTable");
+  table.className = "schedule " + currentView;
+  document.getElementById("datePicker").value = fmtDate(currentDate);
+  if (currentView === "day") renderDay();
+  else if (currentView === "week") renderWeek();
+  else renderMonth();
+  loadCurrentGoals();
+  updateStatus();
+  // データ変更等による再描画でDOMが作り直された後も、仮選択の見た目（ハイライト）を復元する
+  if (provisionalKeys.length > 0) applySelectionVisual();
+}
+
+// その日（1列）の96コマ分の色配列から、「同じ色が連続するブロック」を検出し、
+// 各ブロックの中央インデックスに表示すべきカテゴリ名を割り当てたMapを返す。
+// colors: 長さ96の配列（インデックス = h*4 + m/15）。値は色コード文字列 or undefined
+// 戻り値: Map<index, categoryName>  ※ブロックの中央のインデックスにのみ値が入る
+function computeBlockLabels(colors) {
+  const labels = new Map();
+  const colorToName = color => {
+    const p = palette.find(x => x.color.toLowerCase() === color.toLowerCase());
+    return p ? p.name : "";
+  };
+  let i = 0;
+  const n = colors.length;
+  while (i < n) {
+    const color = colors[i];
+    if (!color) { i++; continue; }
+    let j = i;
+    while (j < n && colors[j] === color) j++;
+    // [i, j) が同色の連続ブロック
+    const mid = i + Math.floor((j - i) / 2);
+    const name = colorToName(color);
+    if (name) labels.set(mid, name);
+    i = j;
+  }
+  return labels;
+}
+
+function renderWeek() {
+  const monday = getMondayOf(currentDate);
+  const today = new Date();
+  const dates = [];
+  for (let i = 0; i < 7; i++) dates.push(addDays(monday, i));
+  const last = dates[6];
+
+  document.getElementById("viewLabel").innerHTML =
+    `<span class="year-month">${monday.getFullYear()}</span>${monday.getMonth()+1}/${monday.getDate()} <span style="color:var(--text-tertiary);font-weight:500;">–</span> ${last.getMonth()+1}/${last.getDate()}`;
+  document.getElementById("viewNote").textContent = "選択はクリック／Shift・Cmd+クリック／ドラッグ。確定はダブルクリックか左の色見本";
+
+  // 各日について、96コマ分の色配列とラベル表示位置を事前計算
+  const dayColors = dates.map(d => {
+    const arr = [];
+    for (let h = 0; h < 24; h++) for (let m = 0; m < 60; m += 15) {
+      const key = `${fmtDate(d)}_${String(h).padStart(2,"0")}${String(m).padStart(2,"0")}`;
+      arr.push(cellData[key]);
+    }
+    return arr;
+  });
+  const dayLabels = dayColors.map(colors => computeBlockLabels(colors));
+
+  let html = "<thead><tr><th class='time-col'>TIME</th>";
+  dates.forEach((d, i) => {
+    const cls = [];
+    if (i === 5) cls.push("sat");
+    if (i === 6) cls.push("sun");
+    if (isSameDay(d, today)) cls.push("today");
+    html += `<th class="${cls.join(' ')}">${JP_WEEKDAYS[d.getDay()]}<span class="day-num">${d.getDate()}</span></th>`;
+  });
+  html += "</tr></thead><tbody>";
+
+  let idx = 0; // h*4 + m/15
+  for (let h = 0; h < 24; h++) {
+    for (let m = 0; m < 60; m += 15) {
+      const isHourTop = (m === 0);
+      const tcCls = ["time-col"];
+      if (isHourTop) tcCls.push("hour-mark");
+      const timeStr = isHourTop ? `${String(h).padStart(2,"0")}:00` : "";
+      html += `<tr><td class="${tcCls.join(' ')}">${timeStr}</td>`;
+      dates.forEach((d, i) => {
+        const key = `${fmtDate(d)}_${String(h).padStart(2,"0")}${String(m).padStart(2,"0")}`;
+        const color = cellData[key];
+        const cls = ["cell"];
+        if (isHourTop) cls.push("hour-top");
+        if (i === 5) cls.push("sat");
+        if (i === 6) cls.push("sun");
+        if (color) cls.push("colored");
+        const style = color ? `style="background:${color};"` : "";
+        const label = dayLabels[i].get(idx);
+        const labelHtml = label ? `<span class="cell-label">${escapeHtml(label)}</span>` : "";
+        html += `<td class="${cls.join(' ')}" data-key="${key}" ${style}>${labelHtml}</td>`;
+      });
+      html += "</tr>";
+      idx++;
+    }
+  }
+  html += "</tbody>";
+  document.getElementById("scheduleTable").innerHTML = html;
+  attachCellEvents();
+}
+
+function renderDay() {
+  const d = currentDate;
+  const today = new Date();
+  const isToday = isSameDay(d, today);
+  document.getElementById("viewLabel").innerHTML =
+    `<span class="year-month">${d.getFullYear()}</span>${d.getMonth()+1}月${d.getDate()}日 <span style="color:var(--text-tertiary);font-weight:500;">(${JP_WEEKDAYS[d.getDay()]})</span>${isToday ? ' <span style="color:var(--accent);font-size:13px;margin-left:6px;">● Today</span>' : ''}`;
+  document.getElementById("viewNote").textContent = "1日詳細表示・15分単位／選択はクリック・ドラッグ、確定はダブルクリックか左の色見本";
+
+  const dow = d.getDay();
+  const dayCls = dow === 6 ? "sat" : (dow === 0 ? "sun" : "");
+
+  // 96コマ分の色配列とラベル表示位置を事前計算
+  const colors = [];
+  for (let h = 0; h < 24; h++) for (let m = 0; m < 60; m += 15) {
+    const key = `${fmtDate(d)}_${String(h).padStart(2,"0")}${String(m).padStart(2,"0")}`;
+    colors.push(cellData[key]);
+  }
+  const labels = computeBlockLabels(colors);
+
+  let html = `<thead><tr><th class='time-col'>TIME</th><th class="${dayCls}${isToday ? ' today' : ''}">${JP_WEEKDAYS[dow]}<span class="day-num">${d.getMonth()+1}/${d.getDate()}</span></th></tr></thead><tbody>`;
+
+  let idx = 0;
+  for (let h = 0; h < 24; h++) {
+    for (let m = 0; m < 60; m += 15) {
+      const timeStr = `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`;
+      const isHourTop = (m === 0);
+      const tcCls = ["time-col"];
+      if (isHourTop) tcCls.push("hour-mark");
+      html += `<tr><td class="${tcCls.join(' ')}">${timeStr}</td>`;
+      const key = `${fmtDate(d)}_${String(h).padStart(2,"0")}${String(m).padStart(2,"0")}`;
+      const color = cellData[key];
+      const cls = ["cell"];
+      if (isHourTop) cls.push("hour-top");
+      if (dow === 6) cls.push("sat");
+      if (dow === 0) cls.push("sun");
+      if (color) cls.push("colored");
+      const style = color ? `style="background:${color};"` : "";
+      const label = labels.get(idx);
+      const labelHtml = label ? `<span class="cell-label">${escapeHtml(label)}</span>` : "";
+      html += `<td class="${cls.join(' ')}" data-key="${key}" ${style}>${labelHtml}</td></tr>`;
+      idx++;
+    }
+  }
+  html += "</tbody>";
+  document.getElementById("scheduleTable").innerHTML = html;
+  attachCellEvents();
+}
+
+function renderMonth() {
+  const d = currentDate;
+  const today = new Date();
+  const year = d.getFullYear();
+  const month = d.getMonth();
+  document.getElementById("viewLabel").innerHTML =
+    `<span class="year-month">${year}</span>${month+1}月`;
+  document.getElementById("viewNote").textContent = "日付セルをクリックで日ビューに移動";
+
+  const firstDay = new Date(year, month, 1);
+  const startDate = getMondayOf(firstDay);
+
+  let html = "<thead><tr>";
+  ["MON","TUE","WED","THU","FRI","SAT","SUN"].forEach((w, i) => {
+    const cls = i === 5 ? "sat" : (i === 6 ? "sun" : "");
+    html += `<th class="${cls}">${w}</th>`;
+  });
+  html += "</tr></thead><tbody>";
+
+  let cur = new Date(startDate);
+  for (let week = 0; week < 6; week++) {
+    html += "<tr>";
+    for (let i = 0; i < 7; i++) {
+      const isOtherMonth = cur.getMonth() !== month;
+      const isToday = isSameDay(cur, today);
+      const cls = ["day-cell"];
+      if (isOtherMonth) cls.push("other-month");
+      if (i === 5) cls.push("sat");
+      if (i === 6) cls.push("sun");
+      if (isToday) cls.push("today");
+
+      const dateKey = fmtDate(cur);
+      const colorCounts = {};
+      Object.entries(cellData).forEach(([k, c]) => {
+        if (k.startsWith(dateKey + "_")) colorCounts[c] = (colorCounts[c] || 0) + 1;
+      });
+      const totalCells = Object.values(colorCounts).reduce((a,b) => a+b, 0);
+      let barsHtml = "";
+      if (totalCells > 0) {
+        const sorted = Object.entries(colorCounts).sort((a,b) => b[1]-a[1]).slice(0, 6);
+        barsHtml = '<div class="color-bar-container">';
+        sorted.forEach(([color, count]) => {
+          barsHtml += `<div class="color-bar" style="background:${color};flex-grow:${count};" title="${(count*15/60).toFixed(2)}h"></div>`;
+        });
+        barsHtml += '</div>';
+        const totalH = (totalCells * 15 / 60).toFixed(1);
+        barsHtml += `<div class="day-total">${totalH}h</div>`;
+      }
+
+      html += `<td class="${cls.join(' ')}" data-date="${dateKey}">
+        <div class="date-num">${cur.getDate()}</div>
+        ${barsHtml}
+      </td>`;
+      cur = addDays(cur, 1);
+    }
+    html += "</tr>";
+    if (cur.getMonth() !== month && week >= 3) break;
+  }
+  html += "</tbody>";
+  document.getElementById("scheduleTable").innerHTML = html;
+
+  document.querySelectorAll(".schedule.month td.day-cell").forEach(td => {
+    td.addEventListener("click", () => {
+      currentDate = new Date(td.dataset.date);
+      setView("day");
+    });
+  });
+}
+
+// ========== セル操作（仮選択 → 別操作で確定） ==========
+// すべての選択系操作（クリック／Shift+クリック／Cmd・Ctrl+クリック／ドラッグ）は
+// 「仮選択（provisionalKeys）」を作る・伸ばすだけで、即座には何も確定しない。
+// 確定（色を適用／消去／コピー・カット・ペースト／移動）は別の操作（ダブルクリック・確定バー・
+// 左パネルのカテゴリクリック・Backspace・Cmd/Ctrl+C/X/V・ドラッグ移動）で行う。
+let provisionalKeys = [];     // 仮選択中のセルkey一覧
+let shiftAnchorTd = null;     // Shift+クリックの起点（同ビュー内限定のDOM参照）
+let lastClickedKey = null;    // 直前に操作したセルのkey文字列（ペースト先の基準点／ビュー切替後も保持）
+
+function clearSelectionVisual() {
+  document.querySelectorAll(".schedule td.cell.selecting").forEach(td => td.classList.remove("selecting"));
+}
+
+function applySelectionVisual() {
+  clearSelectionVisual();
+  provisionalKeys.forEach(key => {
+    const td = document.querySelector(`.schedule td.cell[data-key="${key}"]`);
+    if (td) td.classList.add("selecting");
+  });
+}
+
+function clearProvisionalSelection() {
+  clearSelectionVisual();
+  provisionalKeys = [];
+  hideMultiselectBar();
+}
+
+// 同じ列（同じ日）の中で、startTdからendTdまでの連続するセルkeyを返す
+function getKeysBetween(startTd, endTd) {
+  if (!startTd || !endTd) return [];
+  const colIndex = td => Array.from(td.parentElement.children).indexOf(td);
+  const rows = Array.from(document.querySelectorAll(".schedule tbody tr"));
+  const startRow = startTd.closest("tr");
+  const endRow = endTd.closest("tr");
+  const startRowIdx = rows.indexOf(startRow);
+  const endRowIdx = rows.indexOf(endRow);
+  const startCol = colIndex(startTd);
+  const endCol = colIndex(endTd);
+
+  // 列が違う（=日が違う）場合は、終点セル単独として扱う
+  if (endCol !== startCol || startRowIdx === -1 || endRowIdx === -1) {
+    return endTd.dataset.key ? [endTd.dataset.key] : [];
+  }
+
+  const col = startCol;
+  const lo = Math.min(startRowIdx, endRowIdx);
+  const hi = Math.max(startRowIdx, endRowIdx);
+  const keys = [];
+  for (let r = lo; r <= hi; r++) {
+    const cell = rows[r]?.children[col];
+    if (cell && cell.classList.contains("cell") && cell.dataset.key) keys.push(cell.dataset.key);
+  }
+  return keys;
+}
+
+// ---- ドラッグ状態 ----
+let dragMode = null;        // null | "select" | "move"
+let dragAnchorTd = null;    // ドラッグ開始セル
+let dragMoved = false;      // pointerdown後に実際に別セルへ移動したか（クリックとドラッグの判別用）
+let moveSourceKeys = [];    // 移動ドラッグ開始時点の仮選択キー（元の位置）
+let moveSourceColors = {};  // 移動元の各キーの色（key -> color）
+
+function findCellAt(x, y) {
+  const el = document.elementFromPoint(x, y);
+  return el?.closest(".schedule td.cell") || null;
+}
+
+function clearDragPreview() {
+  document.querySelectorAll(".schedule td.cell.drag-preview").forEach(td => td.classList.remove("drag-preview"));
+}
+
+function attachCellEvents() {
+  document.querySelectorAll(".schedule td.cell").forEach(td => {
+    td.addEventListener("pointerdown", e => {
+      // 右クリック等は無視
+      if (e.button !== undefined && e.button !== 0) return;
+      e.preventDefault();
+      dragMoved = false;
+      dragAnchorTd = td;
+      const key = td.dataset.key;
+      const isToggleMod = e.metaKey || e.ctrlKey;
+      const isShift = e.shiftKey;
+
+      // 「すでに仮選択中の色付きセル」から、モディファイアなしでドラッグを始めた場合は「移動」
+      const isOnProvisionalColored = provisionalKeys.includes(key) && cellData[key] && !isToggleMod && !isShift;
+      dragMode = isOnProvisionalColored ? "move" : "select";
+
+      if (dragMode === "move") {
+        moveSourceKeys = [...provisionalKeys];
+        moveSourceColors = {};
+        moveSourceKeys.forEach(k => { moveSourceColors[k] = cellData[k]; });
+      }
+
+      try { td.setPointerCapture(e.pointerId); } catch {}
+    });
+
+    td.addEventListener("pointermove", e => {
+      if (!dragAnchorTd) return;
+      const target = findCellAt(e.clientX, e.clientY);
+      if (!target) return;
+      if (target !== dragAnchorTd) dragMoved = true;
+      if (!dragMoved) return;
+
+      if (dragMode === "select") {
+        const isToggleMod = e.metaKey || e.ctrlKey;
+        if (isToggleMod) return; // 飛び石は1点ずつの確定操作なのでドラッグでは伸ばさない
+        provisionalKeys = getKeysBetween(dragAnchorTd, target);
+        applySelectionVisual();
+      } else if (dragMode === "move") {
+        // 移動先のプレビュー表示：移動元の各キーをオフセット分ずらした位置をハイライト
+        clearDragPreview();
+        const fromSlot = keyToSlot(dragAnchorTd.dataset.key);
+        const toSlot = keyToSlot(target.dataset.key);
+        const delta = toSlot - fromSlot;
+        moveSourceKeys.forEach(k => {
+          const newKey = slotToKey(keyToSlot(k) + delta);
+          const previewTd = document.querySelector(`.schedule td.cell[data-key="${newKey}"]`);
+          if (previewTd) previewTd.classList.add("drag-preview");
+        });
+      }
+    });
+
+    const finishDrag = e => {
+      if (!dragAnchorTd) return;
+      try { td.releasePointerCapture(e.pointerId); } catch {}
+      const target = findCellAt(e.clientX, e.clientY) || td;
+      const isToggleMod = e.metaKey || e.ctrlKey;
+      const isShift = e.shiftKey;
+
+      if (!dragMoved) {
+        // ドラッグせずクリックのみ終わった場合 → 通常のクリック処理
+        handleCellClick(td, { metaKey: isToggleMod, shiftKey: isShift });
+      } else if (dragMode === "select") {
+        lastClickedKey = target.dataset.key;
+        updateMultiselectBar();
+      } else if (dragMode === "move") {
+        clearDragPreview();
+        const fromSlot = keyToSlot(dragAnchorTd.dataset.key);
+        const toSlot = keyToSlot(target.dataset.key);
+        const delta = toSlot - fromSlot;
+        if (delta !== 0) {
+          moveSelectionBy(delta);
+        }
+      }
+
+      dragAnchorTd = null;
+      dragMode = null;
+      dragMoved = false;
+    };
+    td.addEventListener("pointerup", finishDrag);
+    td.addEventListener("pointercancel", () => {
+      clearDragPreview();
+      dragAnchorTd = null;
+      dragMode = null;
+      dragMoved = false;
+    });
+
+    td.addEventListener("dblclick", e => {
+      e.preventDefault();
+      if (provisionalKeys.length === 0) {
+        provisionalKeys = [td.dataset.key];
+        applySelectionVisual();
+      }
+      openCellModal(provisionalKeys);
+    });
+  });
+}
+
+// 通常クリック（ドラッグなし）の処理：仮選択を作る・伸ばすだけ
+function handleCellClick(td, mod) {
+  const key = td.dataset.key;
+  lastClickedKey = key;
+
+  if (mod.metaKey) {
+    // 飛び石選択：クリックしたコマをON/OFFで積み重ねる
+    const idx = provisionalKeys.indexOf(key);
+    if (idx === -1) {
+      provisionalKeys.push(key);
+      td.classList.add("selecting");
+    } else {
+      provisionalKeys.splice(idx, 1);
+      td.classList.remove("selecting");
+    }
+    shiftAnchorTd = td;
+    updateMultiselectBar();
+    return;
+  }
+
+  if (mod.shiftKey && shiftAnchorTd) {
+    // Shift+クリック連続：仮選択範囲を起点から伸ばす（ポップアップは出さない）
+    provisionalKeys = getKeysBetween(shiftAnchorTd, td);
+    applySelectionVisual();
+    updateMultiselectBar();
+    return;
+  }
+
+  // モディファイアなしの単発クリック
+  if (provisionalKeys.includes(key) && provisionalKeys.length > 0) {
+    // 既に仮選択されているセルを単純クリック → 何もしない（仮選択は維持。誤操作防止）
+    return;
+  }
+  // それ以外の場所をクリック → 仮選択を解除して、そのセルを新規仮選択
+  clearSelectionVisual();
+  provisionalKeys = [key];
+  shiftAnchorTd = td;
+  td.classList.add("selecting");
+  updateMultiselectBar();
+}
+
+// 仮選択中の色付きセルを、指定したスロット数だけ一括で移動する
+function moveSelectionBy(deltaSlots) {
+  const changes = {};
+  // 移動元を消す
+  moveSourceKeys.forEach(k => { changes[k] = undefined; });
+  // 移動先に色を置く（移動元と移動先が重なる場合は移動先の値が優先される）
+  const newKeys = [];
+  moveSourceKeys.forEach(k => {
+    const newKey = slotToKey(keyToSlot(k) + deltaSlots);
+    changes[newKey] = moveSourceColors[k];
+    newKeys.push(newKey);
+  });
+  applyCellChanges(changes);
+  provisionalKeys = newKeys;
+  applySelectionVisual();
+  updateMultiselectBar();
+  showToast(`↔️ ${newKeys.length}コマを移動しました`);
+}
+
+// ---- 仮選択の確定バー ----
+function updateMultiselectBar() {
+  const bar = document.getElementById("multiselectBar");
+  if (provisionalKeys.length === 0) {
+    bar.classList.remove("show");
+    return;
+  }
+  document.getElementById("multiselectCount").textContent = `${provisionalKeys.length}コマ選択中`;
+  bar.classList.add("show");
+}
+function hideMultiselectBar() {
+  document.getElementById("multiselectBar").classList.remove("show");
+}
+document.getElementById("multiselectClear").addEventListener("click", () => {
+  clearProvisionalSelection();
+});
+document.getElementById("multiselectConfirm").addEventListener("click", () => {
+  if (provisionalKeys.length === 0) return;
+  openCellModal(provisionalKeys);
+});
+document.getElementById("multiselectDelete").addEventListener("click", () => {
+  if (provisionalKeys.length === 0) return;
+  eraseSelection();
+  clearProvisionalSelection();
+});
+
+// ---- セル選択モーダル ----
+function formatRangeLabel(keys) {
+  if (keys.length === 0) return "";
+  const sorted = [...keys].sort();
+  const first = sorted[0], last = sorted[sorted.length - 1];
+  const [dateStr, timeStr] = first.split("_");
+  const [, lastTime] = last.split("_");
+  const fmt = t => `${t.slice(0,2)}:${t.slice(2,4)}`;
+  const d = new Date(dateStr);
+  const dateLabel = `${d.getMonth()+1}/${d.getDate()}(${JP_WEEKDAYS[d.getDay()]})`;
+  const totalMin = keys.length * 15;
+  const h = Math.floor(totalMin / 60), m = totalMin % 60;
+  const durLabel = h > 0 ? `${h}時間${m > 0 ? m + "分" : ""}` : `${m}分`;
+  if (first === last) return `${dateLabel} ${fmt(timeStr)}〜（15分）`;
+  return `${dateLabel} ${fmt(timeStr)}〜${fmt(lastTime)}＋15分（計${durLabel}）`;
+}
+
+function renderModalPalette() {
+  const grid = document.getElementById("modalPaletteGrid");
+  grid.innerHTML = "";
+  palette.forEach((p) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "modal-palette-item";
+    btn.innerHTML = `<span class="swatch-mini" style="background:${p.color};"></span><span>${p.name || "(無題)"}</span>`;
+    btn.addEventListener("click", () => {
+      applyColorToSelection(p.color);
+      closeCellModal();
+    });
+    grid.appendChild(btn);
+  });
+}
+
+// ---- 左パネルのカテゴリを直接クリックして即適用 ----
+function applyPaletteColorToProvisional(color) {
+  if (provisionalKeys.length === 0) {
+    showToast("先にセルを選択してください（クリック／Shift+クリック／ドラッグ）");
+    return;
+  }
+  applyColorToSelection(color);
+  clearProvisionalSelection();
+}
+
+// ========== Undo / Redo ==========
+const MAX_HISTORY = 50;
+let undoStack = [];
+let redoStack = [];
+
+// cellDataへの変更をUndo履歴に積みつつ適用する
+// changes: { key: newValueOrUndefined, ... }  newValueOrUndefined が undefined ならそのキーを削除
+function applyCellChanges(changes) {
+  const before = {};
+  const keys = Object.keys(changes);
+  keys.forEach(key => { before[key] = cellData[key]; }); // undefinedなら「元々無かった」を意味する
+
+  keys.forEach(key => {
+    const val = changes[key];
+    if (val === undefined) delete cellData[key];
+    else cellData[key] = val;
+  });
+
+  undoStack.push({ before, after: { ...changes } });
+  if (undoStack.length > MAX_HISTORY) undoStack.shift();
+  redoStack = [];
+
+  saveCellData();
+  repaintKeys(keys);
+  updateStatus();
+}
+
+function repaintKeys(keys) {
+  if (currentView === "month") {
+    // 月表示は日ごとの集計バー表示なので、セル単位の更新では反映できない→再描画
+    render();
+    return;
+  }
+  // ラベル表示（同色連続ブロックの中央テキスト）が変わる可能性があるため、変更されたキーが含まれる日は再描画する
+  const affectedDates = new Set(keys.map(k => k.split("_")[0]));
+  const visibleDates = new Set(
+    Array.from(document.querySelectorAll(".schedule td.cell[data-key]"))
+      .map(td => td.dataset.key.split("_")[0])
+  );
+  const needsRerender = [...affectedDates].some(d => visibleDates.has(d));
+  if (needsRerender) {
+    render();
+    return;
+  }
+  keys.forEach(key => {
+    const td = document.querySelector(`.schedule td.cell[data-key="${key}"]`);
+    if (!td) return;
+    const color = cellData[key];
+    if (color) { td.style.background = color; td.classList.add("colored"); }
+    else { td.style.background = ""; td.classList.remove("colored"); }
+  });
+}
+
+function clearHistory() {
+  undoStack = [];
+  redoStack = [];
+}
+
+function undo() {
+  if (undoStack.length === 0) { showToast("これ以上戻せません"); return; }
+  const entry = undoStack.pop();
+  Object.entries(entry.before).forEach(([key, val]) => {
+    if (val === undefined) delete cellData[key];
+    else cellData[key] = val;
+  });
+  redoStack.push(entry);
+  saveCellData();
+  repaintKeys(Object.keys(entry.before));
+  updateStatus();
+  showToast("↩️ ひとつ前に戻しました");
+}
+
+function redo() {
+  if (redoStack.length === 0) { showToast("これ以上進められません"); return; }
+  const entry = redoStack.pop();
+  Object.entries(entry.after).forEach(([key, val]) => {
+    if (val === undefined) delete cellData[key];
+    else cellData[key] = val;
+  });
+  undoStack.push(entry);
+  saveCellData();
+  repaintKeys(Object.keys(entry.after));
+  updateStatus();
+  showToast("↪️ やり直しました");
+}
+
+// ========== クリップボード（コピー／カット／ペースト） ==========
+// { baseSlot: 基準スロット番号, cells: [{ offset, color }, ...] }
+let cellClipboard = null;
+
+function copySelectionToClipboard(keys) {
+  if (keys.length === 0) return null;
+  const slots = keys.map(k => ({ slot: keyToSlot(k), color: cellData[k] })).filter(c => c.color);
+  if (slots.length === 0) { showToast("コピーできる色付きのコマがありません"); return null; }
+  const baseSlot = Math.min(...slots.map(s => s.slot));
+  cellClipboard = {
+    baseSlot,
+    cells: slots.map(s => ({ offset: s.slot - baseSlot, color: s.color })),
+  };
+  return cellClipboard;
+}
+
+function pasteClipboardAt(targetKey) {
+  if (!cellClipboard || !targetKey) { showToast("貼り付け先が選ばれていません"); return; }
+  const targetSlot = keyToSlot(targetKey);
+  const changes = {};
+  cellClipboard.cells.forEach(c => {
+    const key = slotToKey(targetSlot + c.offset);
+    changes[key] = c.color;
+  });
+  applyCellChanges(changes);
+  showToast(`📋 ${Object.keys(changes).length}コマを貼り付けました`);
+}
+
+document.addEventListener("keydown", e => {
+  // テキスト入力中（目標欄・カテゴリ名入力等）は素通りさせる
+  const tag = document.activeElement?.tagName;
+  if (tag === "INPUT" || tag === "TEXTAREA") return;
+  // モーダル表示中はショートカットを無効化（モーダル側の操作を優先）
+  if (document.getElementById("cellModalOverlay").classList.contains("show")) return;
+  if (document.getElementById("helpOverlay").classList.contains("show")) return;
+
+  // Backspace/Delete：仮選択範囲を消去
+  if (e.key === "Backspace" || e.key === "Delete") {
+    if (provisionalKeys.length === 0) return;
+    e.preventDefault();
+    eraseSelection();
+    clearProvisionalSelection();
+    return;
+  }
+
+  const isMod = e.metaKey || e.ctrlKey;
+  if (!isMod) return;
+
+  const key = e.key.toLowerCase();
+  if (key === "z") {
+    e.preventDefault();
+    if (e.shiftKey) redo(); else undo();
+  } else if (key === "y") {
+    e.preventDefault();
+    redo();
+  } else if (key === "c") {
+    if (provisionalKeys.length === 0) return;
+    e.preventDefault();
+    const clip = copySelectionToClipboard(provisionalKeys);
+    if (clip) showToast(`📋 ${clip.cells.length}コマをコピーしました`);
+  } else if (key === "x") {
+    if (provisionalKeys.length === 0) return;
+    e.preventDefault();
+    const clip = copySelectionToClipboard(provisionalKeys);
+    if (!clip) return;
+    const changes = {};
+    provisionalKeys.forEach(k => { changes[k] = undefined; });
+    applyCellChanges(changes);
+    clearProvisionalSelection();
+    showToast(`✂️ ${clip.cells.length}コマを切り取りました`);
+  } else if (key === "v") {
+    if (!lastClickedKey) return;
+    e.preventDefault();
+    pasteClipboardAt(lastClickedKey);
+  }
+});
+
+function applyColorToSelection(color) {
+  const changes = {};
+  provisionalKeys.forEach(key => { changes[key] = color; });
+  applyCellChanges(changes);
+  showToast(`🎨 ${provisionalKeys.length}コマに反映しました`);
+}
+
+function eraseSelection() {
+  const changes = {};
+  provisionalKeys.forEach(key => { changes[key] = undefined; });
+  applyCellChanges(changes);
+  showToast(`🧽 ${provisionalKeys.length}コマを消去しました`);
+}
+
+function openCellModal(keys) {
+  provisionalKeys = keys;
+  document.getElementById("modalRange").textContent = formatRangeLabel(keys);
+  renderModalPalette();
+  document.getElementById("modalCustomName").value = "";
+  document.getElementById("modalCustomColor").value = "#60A5FA";
+  document.getElementById("modalCustomSave").checked = true;
+  document.getElementById("cellModalOverlay").classList.add("show");
+  hideMultiselectBar();
+}
+
+function closeCellModal() {
+  document.getElementById("cellModalOverlay").classList.remove("show");
+  clearProvisionalSelection();
+}
+
+document.getElementById("modalCustomApply").addEventListener("click", () => {
+  const color = document.getElementById("modalCustomColor").value;
+  const name = document.getElementById("modalCustomName").value.trim();
+  if (document.getElementById("modalCustomSave").checked) {
+    palette.push({ color, name: name || "新しいカテゴリ" });
+    savePalette();
+    renderPalette();
+  }
+  applyColorToSelection(color);
+  closeCellModal();
+});
+document.getElementById("modalCustomName").addEventListener("keydown", e => {
+  if (e.key === "Enter") document.getElementById("modalCustomApply").click();
+});
+
+document.getElementById("modalEraseBtn").addEventListener("click", () => {
+  eraseSelection();
+  closeCellModal();
+});
+
+document.getElementById("modalCancelBtn").addEventListener("click", closeCellModal);
+document.getElementById("cellModalOverlay").addEventListener("click", e => {
+  if (e.target.id === "cellModalOverlay") closeCellModal();
+});
+
+
+// ---- ヘルプモーダル ----
+function openHelpModal() {
+  document.getElementById("helpOverlay").classList.add("show");
+}
+function closeHelpModal() {
+  document.getElementById("helpOverlay").classList.remove("show");
+}
+document.getElementById("helpBtn").addEventListener("click", openHelpModal);
+document.getElementById("helpCloseBtn").addEventListener("click", closeHelpModal);
+document.getElementById("helpCloseBtn2").addEventListener("click", closeHelpModal);
+document.getElementById("helpOverlay").addEventListener("click", e => {
+  if (e.target.id === "helpOverlay") closeHelpModal();
+});
+
+document.addEventListener("keydown", e => {
+  if (e.key !== "Escape") return;
+  if (document.getElementById("helpOverlay").classList.contains("show")) {
+    closeHelpModal();
+  } else if (document.getElementById("cellModalOverlay").classList.contains("show")) {
+    closeCellModal();
+  }
+});
+
+
+// ========== 集計 ==========
+function getDatesInView() {
+  if (currentView === "day") return [fmtDate(currentDate)];
+  if (currentView === "week") {
+    const monday = getMondayOf(currentDate);
+    return Array.from({length: 7}, (_, i) => fmtDate(addDays(monday, i)));
+  }
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+  const lastDay = new Date(year, month + 1, 0).getDate();
+  return Array.from({length: lastDay}, (_, i) => fmtDate(new Date(year, month, i+1)));
+}
+
+function updateStatus() {
+  const counts = {};
+  const dates = getDatesInView();
+  let total = 0;
+  Object.entries(cellData).forEach(([k, color]) => {
+    if (dates.includes(k.split("_")[0])) {
+      counts[color] = (counts[color] || 0) + 1;
+      total++;
+    }
+  });
+  const totalH = (total * 15 / 60).toFixed(2);
+  const viewLabel = currentView === "day" ? "今日" : (currentView === "week" ? "今週" : "今月");
+
+  let html = `<span class="status-item">${viewLabel}合計: <span class="status-total">${totalH}h</span></span>`;
+
+  const topColors = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 6);
+  topColors.forEach(([c, n]) => {
+    const p = palette.find(x => x.color.toLowerCase() === c.toLowerCase());
+    const name = p ? p.name : "—";
+    html += `<span class="status-item"><span class="swatch-mini" style="background:${c};"></span>${name}: <strong>${(n*15/60).toFixed(2)}h</strong></span>`;
+  });
+  document.getElementById("status").innerHTML = html;
+}
+
+// ========== ナビ ==========
+function moveBy(dir) {
+  if (currentView === "day") currentDate = addDays(currentDate, dir);
+  else if (currentView === "week") currentDate = addDays(currentDate, dir * 7);
+  else currentDate = addMonths(currentDate, dir);
+  clearProvisionalSelection();
+  render();
+}
+document.getElementById("prevBtn").addEventListener("click", () => moveBy(-1));
+document.getElementById("nextBtn").addEventListener("click", () => moveBy(1));
+document.getElementById("todayBtn").addEventListener("click", () => {
+  currentDate = new Date(); currentDate.setHours(0,0,0,0);
+  clearProvisionalSelection();
+  render();
+});
+document.getElementById("datePicker").addEventListener("change", e => {
+  if (e.target.value) { currentDate = new Date(e.target.value); clearProvisionalSelection(); render(); }
+});
+document.querySelectorAll(".view-tabs button").forEach(b => {
+  b.addEventListener("click", () => setView(b.dataset.view));
+});
+
+// ========== メニュー ==========
+const menuBtn = document.getElementById("menuBtn");
+const menuDropdown = document.getElementById("menuDropdown");
+menuBtn.addEventListener("click", e => {
+  e.stopPropagation();
+  menuDropdown.classList.toggle("show");
+});
+document.addEventListener("click", () => menuDropdown.classList.remove("show"));
+
+// ========== クリア ==========
+document.getElementById("clearView").addEventListener("click", () => {
+  const viewLabel = currentView === "day" ? "この日" : (currentView === "week" ? "この週" : "この月");
+  if (!confirm(`${viewLabel}の塗りをすべて消去しますか？\n（目標は残ります）`)) return;
+  const dates = getDatesInView();
+  Object.keys(cellData).forEach(k => {
+    if (dates.includes(k.split("_")[0])) delete cellData[k];
+  });
+  saveCellData();
+  clearHistory();
+  render();
+  showToast(`${viewLabel}の塗りをクリアしました`);
+});
+document.getElementById("clearAll").addEventListener("click", () => {
+  if (!confirm("⚠️ 全ての塗りデータと目標を完全に削除します。本当によろしいですか？")) return;
+  if (!confirm("最終確認：全データを削除します。元に戻せません。続行しますか？")) return;
+  cellData = {};
+  goalsData = {};
+  saveCellData();
+  saveGoals();
+  clearHistory();
+  render();
+  showToast("全データを削除しました");
+});
+
+document.getElementById("resetPaletteBtn").addEventListener("click", () => {
+  if (!confirm("パレットを初期色に戻しますか？（塗ったセルは残ります）")) return;
+  palette = JSON.parse(JSON.stringify(DEFAULT_PALETTE));
+  savePalette();
+  renderPalette();
+  updateStatus();
+});
+
+// ========== PNGエクスポート ==========
+document.getElementById("exportPng").addEventListener("click", async () => {
+  showToast("画像を作成中...");
+
+  // エクスポート用に一時的なコンテナを作る（目標も含む）
+  const monday = getMondayOf(currentDate);
+  const monthKey = getMonthKey(currentDate);
+  const weekKey = getWeekKey(currentDate);
+  const monthGoal = goalsData[monthKey] || "";
+  const weekGoal = goalsData[weekKey] || "";
+
+  const container = document.createElement("div");
+  container.style.cssText = `
+    position: fixed; top: -9999px; left: 0;
+    background: #ffffff; padding: 32px;
+    width: ${Math.max(document.getElementById("scheduleTable").scrollWidth + 80, 900)}px;
+    font-family: ${getComputedStyle(document.body).fontFamily};
+    color: #0f172a;
+  `;
+
+  // ヘッダー
+  const header = document.createElement("div");
+  header.style.cssText = "margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid #0f172a;";
+  header.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;">
+      <div style="font-size:22px;font-weight:700;letter-spacing:-0.01em;">📅 Paint Schedule</div>
+      <div style="font-size:12px;color:#94a3b8;">${new Date().toLocaleDateString("ja-JP")} 出力</div>
+    </div>
+    <div style="font-size:18px;font-weight:700;color:#2563eb;">${document.getElementById("viewLabel").textContent}</div>
+  `;
+  container.appendChild(header);
+
+  // 目標
+  if (monthGoal || weekGoal) {
+    const goals = document.createElement("div");
+    goals.style.cssText = "display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;";
+    if (monthGoal) {
+      goals.innerHTML += `
+        <div style="background:#eff6ff;border-left:4px solid #2563eb;padding:12px 16px;border-radius:6px;">
+          <div style="font-size:10px;font-weight:700;color:#2563eb;letter-spacing:0.05em;text-transform:uppercase;margin-bottom:6px;">🎯 月の目標 (${currentDate.getFullYear()}/${currentDate.getMonth()+1})</div>
+          <div style="font-size:13px;color:#0f172a;white-space:pre-wrap;line-height:1.6;">${escapeHtml(monthGoal)}</div>
+        </div>`;
+    } else {
+      goals.innerHTML += `<div></div>`;
+    }
+    if (weekGoal) {
+      const sunday = addDays(monday, 6);
+      goals.innerHTML += `
+        <div style="background:#fefce8;border-left:4px solid #ca8a04;padding:12px 16px;border-radius:6px;">
+          <div style="font-size:10px;font-weight:700;color:#ca8a04;letter-spacing:0.05em;text-transform:uppercase;margin-bottom:6px;">📌 週の目標 (${monday.getMonth()+1}/${monday.getDate()}–${sunday.getMonth()+1}/${sunday.getDate()})</div>
+          <div style="font-size:13px;color:#0f172a;white-space:pre-wrap;line-height:1.6;">${escapeHtml(weekGoal)}</div>
+        </div>`;
+    } else {
+      goals.innerHTML += `<div></div>`;
+    }
+    container.appendChild(goals);
+  }
+
+  // スケジュール表（クローン）
+  const tableClone = document.getElementById("scheduleWrap").cloneNode(true);
+  tableClone.style.cssText = "padding:0;border:none;box-shadow:none;";
+  // ヘッダー部分は削除（既に上で出力済み）
+  const innerHeader = tableClone.querySelector(".schedule-header");
+  if (innerHeader) innerHeader.remove();
+  // 画面上はグリッド部分を縦スクロール表示しているが、PNGには全体を写すため高さ制限を解除する
+  const innerScroll = tableClone.querySelector(".schedule-scroll");
+  if (innerScroll) innerScroll.style.cssText = "overflow:visible;max-height:none;border-radius:var(--radius-md);";
+  container.appendChild(tableClone);
+
+  // 集計
+  const counts = {};
+  const dates = getDatesInView();
+  let total = 0;
+  Object.entries(cellData).forEach(([k, c]) => {
+    if (dates.includes(k.split("_")[0])) {
+      counts[c] = (counts[c] || 0) + 1;
+      total++;
+    }
+  });
+  if (total > 0) {
+    const summary = document.createElement("div");
+    summary.style.cssText = "margin-top:20px;padding:14px 16px;background:#f8fafc;border-radius:8px;display:flex;flex-wrap:wrap;gap:16px;font-size:12px;";
+    summary.innerHTML = `<div style="font-weight:700;">合計: ${(total*15/60).toFixed(2)}h</div>`;
+    Object.entries(counts).sort((a,b) => b[1]-a[1]).forEach(([c, n]) => {
+      const p = palette.find(x => x.color.toLowerCase() === c.toLowerCase());
+      summary.innerHTML += `<div style="display:flex;align-items:center;gap:6px;"><span style="width:12px;height:12px;background:${c};border-radius:3px;display:inline-block;border:1px solid rgba(0,0,0,0.1);"></span>${p ? escapeHtml(p.name) : "—"}: <strong>${(n*15/60).toFixed(2)}h</strong></div>`;
+    });
+    container.appendChild(summary);
+  }
+
+  document.body.appendChild(container);
+
+  try {
+    const canvas = await html2canvas(container, {
+      backgroundColor: "#ffffff",
+      scale: 2,
+      useCORS: true,
+    });
+    const dataUrl = canvas.toDataURL("image/png");
+    const a = document.createElement("a");
+    a.href = dataUrl;
+    a.download = `paint-schedule_${currentView}_${fmtDate(currentDate)}.png`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    showToast("✅ 画像を保存しました");
+  } catch (err) {
+    console.error(err);
+    showToast("画像作成に失敗しました");
+  } finally {
+    container.remove();
+  }
+});
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+// ========== Excelエクスポート ==========
+document.getElementById("exportExcel").addEventListener("click", () => {
+  menuDropdown.classList.remove("show");
+  try {
+    const dates = getDatesInView();
+    const colorMap = {};
+    palette.forEach(p => colorMap[p.color.toLowerCase()] = p.name);
+    const times = [];
+    for (let h = 0; h < 24; h++) for (let m = 0; m < 60; m += 15)
+      times.push(`${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`);
+
+    const wb = XLSX.utils.book_new();
+
+    // 目標シート
+    const monthKey = getMonthKey(currentDate);
+    const weekKey = getWeekKey(currentDate);
+    const monday = getMondayOf(currentDate);
+    const sunday = addDays(monday, 6);
+    const goalRows = [
+      ["📋 目標サマリー"],
+      [],
+      [`🎯 月の目標 (${currentDate.getFullYear()}/${currentDate.getMonth()+1})`],
+      [goalsData[monthKey] || "（未入力）"],
+      [],
+      [`📌 週の目標 (${monday.getMonth()+1}/${monday.getDate()}–${sunday.getMonth()+1}/${sunday.getDate()})`],
+      [goalsData[weekKey] || "（未入力）"],
+      [],
+      [`出力日: ${new Date().toLocaleString("ja-JP")}`],
+    ];
+    const wsGoals = XLSX.utils.aoa_to_sheet(goalRows);
+    wsGoals["!cols"] = [{wch: 80}];
+    XLSX.utils.book_append_sheet(wb, wsGoals, "目標");
+
+    // メインシート
+    const headers = ["時刻", ...dates.map(d => {
+      const dd = new Date(d);
+      return `${dd.getMonth()+1}/${dd.getDate()}(${JP_WEEKDAYS[dd.getDay()]})`;
+    })];
+    const rows = [headers];
+    times.forEach(t => {
+      const row = [t];
+      const [hh, mm] = t.split(":");
+      const timeCode = hh + mm;
+      dates.forEach(d => {
+        const key = `${d}_${timeCode}`;
+        const color = cellData[key];
+        row.push(color ? (colorMap[color.toLowerCase()] || color) : "");
+      });
+      rows.push(row);
+    });
+    const ws1 = XLSX.utils.aoa_to_sheet(rows);
+    ws1["!cols"] = [{wch: 8}, ...dates.map(() => ({wch: 14}))];
+    XLSX.utils.book_append_sheet(wb, ws1, "スケジュール");
+
+    // 集計シート
+    const counts = {};
+    Object.entries(cellData).forEach(([k, c]) => {
+      if (dates.includes(k.split("_")[0])) counts[c] = (counts[c] || 0) + 1;
+    });
+    const summaryRows = [["カテゴリ名", "色コード", "合計時間(h)", "セル数(15分)"]];
+    Object.entries(counts).sort((a,b) => b[1]-a[1]).forEach(([c, n]) => {
+      summaryRows.push([colorMap[c.toLowerCase()] || "—", c, +(n*15/60).toFixed(2), n]);
+    });
+    const ws2 = XLSX.utils.aoa_to_sheet(summaryRows);
+    ws2["!cols"] = [{wch: 24}, {wch: 12}, {wch: 14}, {wch: 14}];
+    XLSX.utils.book_append_sheet(wb, ws2, "集計");
+
+    // パレットシート
+    const palRows = [["No.", "色コード", "カテゴリ名"]];
+    palette.forEach((p, i) => palRows.push([i+1, p.color, p.name]));
+    const ws3 = XLSX.utils.aoa_to_sheet(palRows);
+    ws3["!cols"] = [{wch: 6}, {wch: 12}, {wch: 28}];
+    XLSX.utils.book_append_sheet(wb, ws3, "パレット");
+
+    XLSX.writeFile(wb, `paint-schedule_${currentView}_${fmtDate(currentDate)}.xlsx`);
+    showToast("✅ Excelで保存しました");
+  } catch (err) {
+    console.error(err);
+    showToast("Excel保存に失敗しました");
+  }
+});
+
+// ========== CSVエクスポート ==========
+document.getElementById("exportCsv").addEventListener("click", () => {
+  menuDropdown.classList.remove("show");
+  try {
+    const dates = getDatesInView();
+    const colorMap = {};
+    palette.forEach(p => colorMap[p.color.toLowerCase()] = p.name);
+    const times = [];
+    for (let h = 0; h < 24; h++) for (let m = 0; m < 60; m += 15)
+      times.push(`${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`);
+
+    const monthKey = getMonthKey(currentDate);
+    const weekKey = getWeekKey(currentDate);
+    const monday = getMondayOf(currentDate);
+    const sunday = addDays(monday, 6);
+
+    const lines = [];
+    lines.push(`# Paint Schedule Export`);
+    lines.push(`# 月の目標 (${currentDate.getFullYear()}/${currentDate.getMonth()+1}): ${(goalsData[monthKey] || "").replace(/\n/g, " | ")}`);
+    lines.push(`# 週の目標 (${monday.getMonth()+1}/${monday.getDate()}–${sunday.getMonth()+1}/${sunday.getDate()}): ${(goalsData[weekKey] || "").replace(/\n/g, " | ")}`);
+    lines.push("");
+
+    const headers = ["時刻", ...dates.map(d => {
+      const dd = new Date(d);
+      return `${dd.getMonth()+1}/${dd.getDate()}(${JP_WEEKDAYS[dd.getDay()]})`;
+    })];
+    lines.push(headers.join(","));
+
+    times.forEach(t => {
+      const [hh, mm] = t.split(":");
+      const timeCode = hh + mm;
+      const row = [t];
+      dates.forEach(d => {
+        const key = `${d}_${timeCode}`;
+        const color = cellData[key];
+        const val = color ? (colorMap[color.toLowerCase()] || color) : "";
+        row.push(val.includes(",") || val.includes('"') ? `"${val.replace(/"/g, '""')}"` : val);
+      });
+      lines.push(row.join(","));
+    });
+
+    const csv = "\uFEFF" + lines.join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `paint-schedule_${currentView}_${fmtDate(currentDate)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast("✅ CSVで保存しました");
+  } catch (err) {
+    console.error(err);
+    showToast("CSV保存に失敗しました");
+  }
+});
+
+// ========== JSONバックアップ/インポート ==========
+document.getElementById("exportJson").addEventListener("click", () => {
+  menuDropdown.classList.remove("show");
+  const data = {
+    version: 3,
+    exportedAt: new Date().toISOString(),
+    palette: palette,
+    cellData: cellData,
+    goalsData: goalsData,
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `paint-schedule_backup_${fmtDate(new Date())}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast("✅ バックアップを保存しました");
+});
+document.getElementById("importJson").addEventListener("click", () => {
+  menuDropdown.classList.remove("show");
+  document.getElementById("fileInput").click();
+});
+document.getElementById("fileInput").addEventListener("change", e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (!data.cellData) throw new Error("不正なフォーマット");
+      const goalCount = data.goalsData ? Object.keys(data.goalsData).length : 0;
+      if (!confirm(`インポートすると現在のデータが上書きされます。続行しますか？\n\nセル: ${Object.keys(data.cellData).length}件\nパレット: ${(data.palette || []).length}色\n目標: ${goalCount}件`)) return;
+      cellData = data.cellData || {};
+      if (Array.isArray(data.palette) && data.palette.length > 0) palette = data.palette;
+      if (data.goalsData) goalsData = data.goalsData;
+      saveCellData();
+      savePalette();
+      saveGoals();
+      clearHistory();
+      renderPalette();
+      render();
+      showToast("✅ データを読み込みました");
+    } catch (err) {
+      alert("読み込みに失敗しました: " + err.message);
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = "";
+});
+
+// ========== トースト ==========
+let toastTimer = null;
+function showToast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), 2200);
+}
+
+// ========== 初期化 ==========
+renderPalette();
+setupGoalListeners();
+setView(currentView);
+
+// グリッド表示エリア（schedule-scroll）の縦スクロール領域を、画面の高さからヘッダー＋ツールバーの実測高さを引いた分だけ確保する
+// これにより、グリッド内を下にスクロールしても曜日・日付の見出し行（thead）が画面に常時表示される
+function updateStickyOffset() {
+  const header = document.querySelector("header.app-header");
+  const toolbar = document.querySelector(".toolbar");
+  const offset = (header?.offsetHeight || 0) + (toolbar?.offsetHeight || 0);
+  document.documentElement.style.setProperty("--sticky-offset", `${offset}px`);
+}
+updateStickyOffset();
+window.addEventListener("resize", updateStickyOffset);
+
+</script>
+</body>
+</html>
