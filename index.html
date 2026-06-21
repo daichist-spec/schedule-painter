@@ -934,6 +934,25 @@
     color: var(--danger);
     background: #fef2f2;
   }
+  .modal-note-input {
+    width: 100%;
+    padding: 9px 10px;
+    border: 1.5px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--text-primary);
+    outline: none;
+    background: var(--bg-elevated);
+    resize: vertical;
+    min-height: 40px;
+    line-height: 1.5;
+    box-sizing: border-box;
+  }
+  .modal-note-input:focus {
+    border-color: var(--accent);
+    background: var(--bg-panel);
+  }
   .modal-custom-row {
     display: flex;
     gap: 8px;
@@ -1243,6 +1262,9 @@
     <div class="modal-section-label">パレットから選ぶ</div>
     <div class="modal-palette-grid" id="modalPaletteGrid"></div>
 
+    <div class="modal-section-label">詳細メモ（任意）</div>
+    <textarea class="modal-note-input" id="modalNoteInput" placeholder="例：Aさんと来期予算の打合せ" maxlength="200" rows="2"></textarea>
+
     <div class="modal-section-label">その場で新しい色を作る</div>
     <div class="modal-custom-row">
       <input type="color" id="modalCustomColor" value="#60A5FA" />
@@ -1292,6 +1314,12 @@
     </div>
 
     <div class="help-section">
+      <h3>📝 詳細メモ</h3>
+      <p>ポップアップを開く（ダブルクリックまたは確定バーの「カテゴリを選ぶ」）と、カテゴリ選択の下に「詳細メモ」入力欄が常に出ます。「会議」のようなカテゴリ名だけでなく、「Aさんと来期予算の打合せ」のような具体的な内容を書いておけます。</p>
+      <p class="help-note">メモを入力して色を適用すると、グリッド上の表示は<b>メモがあればメモを優先して表示</b>します（メモが無ければカテゴリ名）。メモはブロック（同じ色で連続するコマ）ごとに1つで、移動・コピー＆ペーストすると一緒に付いてきます。なお、左パネルの色見本クリックによる即時適用ではメモ欄は使われません。メモを付けたい時はダブルクリックや確定バーからポップアップを開いてください。</p>
+    </div>
+
+    <div class="help-section">
       <h3>↔️ 既存の予定を移動する</h3>
       <p>すでに色が付いているコマを選択した状態で、その選択範囲を<b>もう一度ドラッグ</b>すると、そのままの形を保って別の時間帯・別の日に移動できます（コマの数や飛び石の間隔も保たれます）。</p>
     </div>
@@ -1333,10 +1361,10 @@
     <div class="help-section">
       <h3>📂 メニューの書き出し・読み込み機能</h3>
       <ul>
-        <li><b>📷 PNG出力</b>：今見ているビュー（目標＋スケジュール＋集計）を1枚の画像として保存</li>
-        <li><b>📊 Excel(.xlsx)で保存</b>：目標／スケジュール／集計／パレットの4シート構成で保存</li>
-        <li><b>📄 CSVで保存</b>：表形式データを保存（目標コメント付き）</li>
-        <li><b>💾 JSONバックアップ</b>：今のデータ全部（カテゴリ・塗った内容・目標）を1つのファイルに書き出す。<b>これが唯一の「お引っ越し用」データです</b>。別のPC・ブラウザに移すときは、このファイルを保存しておいて、新しい環境で「📂 JSON読み込み」から読み込めば元通りになります</li>
+        <li><b>📷 PNG出力</b>：今見ているビュー（目標＋スケジュール＋集計、グリッド上のメモ表示も含む）を1枚の画像として保存</li>
+        <li><b>📊 Excel(.xlsx)で保存</b>：目標／スケジュール／集計／メモ一覧／パレットのシート構成で保存（メモがあるブロックはスケジュールシートに「カテゴリ名（メモ）」の形で表示）</li>
+        <li><b>📄 CSVで保存</b>：表形式データを保存（目標コメント・メモ付き）</li>
+        <li><b>💾 JSONバックアップ</b>：今のデータ全部（カテゴリ・塗った内容・詳細メモ・目標）を1つのファイルに書き出す。<b>これが唯一の「お引っ越し用」データです</b>。別のPC・ブラウザに移すときは、このファイルを保存しておいて、新しい環境で「📂 JSON読み込み」から読み込めば元通りになります</li>
         <li><b>🗑️ この期間をクリア／⚠️ 全データを削除</b>：取り消せないので、必要ならJSONバックアップを先に取ってから実行してください</li>
       </ul>
     </div>
@@ -1350,6 +1378,7 @@
 <script>
 // ========== 設定 ==========
 const STORAGE_KEY = "paint_schedule_v3";
+const NOTES_KEY = "paint_schedule_notes_v3";
 const PALETTE_KEY = "paint_schedule_palette_v3";
 const VIEW_KEY = "paint_schedule_view_v3";
 const GOALS_KEY = "paint_schedule_goals_v3";
@@ -1370,6 +1399,9 @@ let palette = loadPalette();
 let currentDate = new Date(); currentDate.setHours(0,0,0,0);
 let currentView = localStorage.getItem(VIEW_KEY) || "week";
 let cellData = loadCellData();
+// cellNotes: ブロックの先頭セルkey（時系列で最も早いコマ）に対して、そのブロック全体の詳細メモを1つだけ持つ
+// 同色で連続するブロックの「先頭」を代表キーとして使う（renderの同色ブロック検出ロジックと対応）
+let cellNotes = loadCellNotes();
 let goalsData = loadGoals();
 
 // ========== ストレージ ==========
@@ -1378,6 +1410,12 @@ function loadCellData() {
   catch { return {}; }
 }
 function saveCellData() { localStorage.setItem(STORAGE_KEY, JSON.stringify(cellData)); }
+
+function loadCellNotes() {
+  try { return JSON.parse(localStorage.getItem(NOTES_KEY) || "{}"); }
+  catch { return {}; }
+}
+function saveCellNotes() { localStorage.setItem(NOTES_KEY, JSON.stringify(cellNotes)); }
 
 function loadPalette() {
   try {
@@ -1543,10 +1581,11 @@ function render() {
 }
 
 // その日（1列）の96コマ分の色配列から、「同じ色が連続するブロック」を検出し、
-// 各ブロックの中央インデックスに表示すべきカテゴリ名を割り当てたMapを返す。
+// 各ブロックの中央インデックスに表示すべきテキスト（詳細メモがあればメモ、なければカテゴリ名）を割り当てたMapを返す。
 // colors: 長さ96の配列（インデックス = h*4 + m/15）。値は色コード文字列 or undefined
-// 戻り値: Map<index, categoryName>  ※ブロックの中央のインデックスにのみ値が入る
-function computeBlockLabels(colors) {
+// keys: 同じ長さのセルkey配列。ブロック先頭のkeyにcellNotesがあればそれを表示に使う
+// 戻り値: Map<index, displayText>  ※ブロックの中央のインデックスにのみ値が入る
+function computeBlockLabels(colors, keys) {
   const labels = new Map();
   const colorToName = color => {
     const p = palette.find(x => x.color.toLowerCase() === color.toLowerCase());
@@ -1559,10 +1598,13 @@ function computeBlockLabels(colors) {
     if (!color) { i++; continue; }
     let j = i;
     while (j < n && colors[j] === color) j++;
-    // [i, j) が同色の連続ブロック
+    // [i, j) が同色の連続ブロック。先頭keyにメモがあれば優先表示
     const mid = i + Math.floor((j - i) / 2);
+    const headKey = keys[i];
+    const note = headKey ? cellNotes[headKey] : "";
     const name = colorToName(color);
-    if (name) labels.set(mid, name);
+    const text = (note && note.trim()) ? note.trim() : name;
+    if (text) labels.set(mid, text);
     i = j;
   }
   return labels;
@@ -1579,16 +1621,21 @@ function renderWeek() {
     `<span class="year-month">${monday.getFullYear()}</span>${monday.getMonth()+1}/${monday.getDate()} <span style="color:var(--text-tertiary);font-weight:500;">–</span> ${last.getMonth()+1}/${last.getDate()}`;
   document.getElementById("viewNote").textContent = "選択はクリック／Shift・Cmd+クリック／ドラッグ。確定はダブルクリックか左の色見本";
 
-  // 各日について、96コマ分の色配列とラベル表示位置を事前計算
-  const dayColors = dates.map(d => {
-    const arr = [];
+  // 各日について、96コマ分の色配列・key配列とラベル表示位置を事前計算
+  const dayColors = [];
+  const dayKeys = [];
+  dates.forEach(d => {
+    const colorsArr = [];
+    const keysArr = [];
     for (let h = 0; h < 24; h++) for (let m = 0; m < 60; m += 15) {
       const key = `${fmtDate(d)}_${String(h).padStart(2,"0")}${String(m).padStart(2,"0")}`;
-      arr.push(cellData[key]);
+      colorsArr.push(cellData[key]);
+      keysArr.push(key);
     }
-    return arr;
+    dayColors.push(colorsArr);
+    dayKeys.push(keysArr);
   });
-  const dayLabels = dayColors.map(colors => computeBlockLabels(colors));
+  const dayLabels = dayColors.map((colors, i) => computeBlockLabels(colors, dayKeys[i]));
 
   let html = "<thead><tr><th class='time-col'>TIME</th>";
   dates.forEach((d, i) => {
@@ -1641,13 +1688,15 @@ function renderDay() {
   const dow = d.getDay();
   const dayCls = dow === 6 ? "sat" : (dow === 0 ? "sun" : "");
 
-  // 96コマ分の色配列とラベル表示位置を事前計算
+  // 96コマ分の色配列・key配列とラベル表示位置を事前計算
   const colors = [];
+  const keysArr = [];
   for (let h = 0; h < 24; h++) for (let m = 0; m < 60; m += 15) {
     const key = `${fmtDate(d)}_${String(h).padStart(2,"0")}${String(m).padStart(2,"0")}`;
     colors.push(cellData[key]);
+    keysArr.push(key);
   }
-  const labels = computeBlockLabels(colors);
+  const labels = computeBlockLabels(colors, keysArr);
 
   let html = `<thead><tr><th class='time-col'>TIME</th><th class="${dayCls}${isToday ? ' today' : ''}">${JP_WEEKDAYS[dow]}<span class="day-num">${d.getMonth()+1}/${d.getDate()}</span></th></tr></thead><tbody>`;
 
@@ -1968,7 +2017,18 @@ function moveSelectionBy(deltaSlots) {
     changes[newKey] = moveSourceColors[k];
     newKeys.push(newKey);
   });
-  applyCellChanges(changes);
+
+  // メモも同じオフセットで移動する
+  const noteChanges = {};
+  moveSourceKeys.forEach(k => {
+    if (cellNotes[k]) {
+      noteChanges[k] = undefined;
+      const newKey = slotToKey(keyToSlot(k) + deltaSlots);
+      noteChanges[newKey] = cellNotes[k];
+    }
+  });
+
+  applyCellChanges(changes, noteChanges);
   provisionalKeys = newKeys;
   applySelectionVisual();
   updateMultiselectBar();
@@ -2049,9 +2109,10 @@ const MAX_HISTORY = 50;
 let undoStack = [];
 let redoStack = [];
 
-// cellDataへの変更をUndo履歴に積みつつ適用する
+// cellData（および任意でcellNotes）への変更をUndo履歴に積みつつ適用する
 // changes: { key: newValueOrUndefined, ... }  newValueOrUndefined が undefined ならそのキーを削除
-function applyCellChanges(changes) {
+// noteChanges（省略可）: { key: newNoteOrUndefined, ... }  cellNotesに対する変更
+function applyCellChanges(changes, noteChanges) {
   const before = {};
   const keys = Object.keys(changes);
   keys.forEach(key => { before[key] = cellData[key]; }); // undefinedなら「元々無かった」を意味する
@@ -2062,7 +2123,19 @@ function applyCellChanges(changes) {
     else cellData[key] = val;
   });
 
-  undoStack.push({ before, after: { ...changes } });
+  let noteBefore = null, noteAfter = null;
+  if (noteChanges && Object.keys(noteChanges).length > 0) {
+    noteBefore = {};
+    Object.keys(noteChanges).forEach(key => { noteBefore[key] = cellNotes[key]; });
+    Object.entries(noteChanges).forEach(([key, val]) => {
+      if (!val) delete cellNotes[key];
+      else cellNotes[key] = val;
+    });
+    noteAfter = { ...noteChanges };
+    saveCellNotes();
+  }
+
+  undoStack.push({ before, after: { ...changes }, noteBefore, noteAfter });
   if (undoStack.length > MAX_HISTORY) undoStack.shift();
   redoStack = [];
 
@@ -2109,6 +2182,13 @@ function undo() {
     if (val === undefined) delete cellData[key];
     else cellData[key] = val;
   });
+  if (entry.noteBefore) {
+    Object.entries(entry.noteBefore).forEach(([key, val]) => {
+      if (!val) delete cellNotes[key];
+      else cellNotes[key] = val;
+    });
+    saveCellNotes();
+  }
   redoStack.push(entry);
   saveCellData();
   repaintKeys(Object.keys(entry.before));
@@ -2123,6 +2203,13 @@ function redo() {
     if (val === undefined) delete cellData[key];
     else cellData[key] = val;
   });
+  if (entry.noteAfter) {
+    Object.entries(entry.noteAfter).forEach(([key, val]) => {
+      if (!val) delete cellNotes[key];
+      else cellNotes[key] = val;
+    });
+    saveCellNotes();
+  }
   undoStack.push(entry);
   saveCellData();
   repaintKeys(Object.keys(entry.after));
@@ -2136,12 +2223,12 @@ let cellClipboard = null;
 
 function copySelectionToClipboard(keys) {
   if (keys.length === 0) return null;
-  const slots = keys.map(k => ({ slot: keyToSlot(k), color: cellData[k] })).filter(c => c.color);
+  const slots = keys.map(k => ({ slot: keyToSlot(k), color: cellData[k], note: cellNotes[k] })).filter(c => c.color);
   if (slots.length === 0) { showToast("コピーできる色付きのコマがありません"); return null; }
   const baseSlot = Math.min(...slots.map(s => s.slot));
   cellClipboard = {
     baseSlot,
-    cells: slots.map(s => ({ offset: s.slot - baseSlot, color: s.color })),
+    cells: slots.map(s => ({ offset: s.slot - baseSlot, color: s.color, note: s.note })),
   };
   return cellClipboard;
 }
@@ -2150,11 +2237,13 @@ function pasteClipboardAt(targetKey) {
   if (!cellClipboard || !targetKey) { showToast("貼り付け先が選ばれていません"); return; }
   const targetSlot = keyToSlot(targetKey);
   const changes = {};
+  const noteChanges = {};
   cellClipboard.cells.forEach(c => {
     const key = slotToKey(targetSlot + c.offset);
     changes[key] = c.color;
+    if (c.note) noteChanges[key] = c.note;
   });
-  applyCellChanges(changes);
+  applyCellChanges(changes, noteChanges);
   showToast(`📋 ${Object.keys(changes).length}コマを貼り付けました`);
 }
 
@@ -2196,8 +2285,12 @@ document.addEventListener("keydown", e => {
     const clip = copySelectionToClipboard(provisionalKeys);
     if (!clip) return;
     const changes = {};
-    provisionalKeys.forEach(k => { changes[k] = undefined; });
-    applyCellChanges(changes);
+    const noteChanges = {};
+    provisionalKeys.forEach(k => {
+      changes[k] = undefined;
+      if (cellNotes[k]) noteChanges[k] = undefined;
+    });
+    applyCellChanges(changes, noteChanges);
     clearProvisionalSelection();
     showToast(`✂️ ${clip.cells.length}コマを切り取りました`);
   } else if (key === "v") {
@@ -2210,14 +2303,37 @@ document.addEventListener("keydown", e => {
 function applyColorToSelection(color) {
   const changes = {};
   provisionalKeys.forEach(key => { changes[key] = color; });
-  applyCellChanges(changes);
+
+  // メモ処理は、モーダル（メモ入力欄）が実際に開いている時だけ行う
+  // 左パネルからの即時適用時は、入力欄が古い値を保持している可能性があるため触らない
+  const isModalOpen = document.getElementById("cellModalOverlay").classList.contains("show");
+  let noteChanges = {};
+  if (isModalOpen) {
+    const sortedKeys = [...provisionalKeys].sort();
+    const headKey = sortedKeys[0];
+    const noteInput = document.getElementById("modalNoteInput");
+    const noteValue = noteInput ? noteInput.value.trim() : "";
+    sortedKeys.forEach(key => {
+      if (key === headKey) {
+        if ((cellNotes[key] || "") !== noteValue) noteChanges[key] = noteValue || undefined;
+      } else if (cellNotes[key]) {
+        noteChanges[key] = undefined;
+      }
+    });
+  }
+
+  applyCellChanges(changes, noteChanges);
   showToast(`🎨 ${provisionalKeys.length}コマに反映しました`);
 }
 
 function eraseSelection() {
   const changes = {};
-  provisionalKeys.forEach(key => { changes[key] = undefined; });
-  applyCellChanges(changes);
+  const noteChanges = {};
+  provisionalKeys.forEach(key => {
+    changes[key] = undefined;
+    if (cellNotes[key]) noteChanges[key] = undefined;
+  });
+  applyCellChanges(changes, noteChanges);
   showToast(`🧽 ${provisionalKeys.length}コマを消去しました`);
 }
 
@@ -2228,6 +2344,9 @@ function openCellModal(keys) {
   document.getElementById("modalCustomName").value = "";
   document.getElementById("modalCustomColor").value = "#60A5FA";
   document.getElementById("modalCustomSave").checked = true;
+  // 選択範囲の先頭キー（時系列で最も早いコマ）に既存メモがあれば表示する
+  const headKey = [...keys].sort()[0];
+  document.getElementById("modalNoteInput").value = (headKey && cellNotes[headKey]) || "";
   document.getElementById("cellModalOverlay").classList.add("show");
   hideMultiselectBar();
 }
@@ -2552,12 +2671,15 @@ document.getElementById("exportExcel").addEventListener("click", () => {
       dates.forEach(d => {
         const key = `${d}_${timeCode}`;
         const color = cellData[key];
-        row.push(color ? (colorMap[color.toLowerCase()] || color) : "");
+        if (!color) { row.push(""); return; }
+        const name = colorMap[color.toLowerCase()] || color;
+        const note = cellNotes[key];
+        row.push(note ? `${name}（${note}）` : name);
       });
       rows.push(row);
     });
     const ws1 = XLSX.utils.aoa_to_sheet(rows);
-    ws1["!cols"] = [{wch: 8}, ...dates.map(() => ({wch: 14}))];
+    ws1["!cols"] = [{wch: 8}, ...dates.map(() => ({wch: 18}))];
     XLSX.utils.book_append_sheet(wb, ws1, "スケジュール");
 
     // 集計シート
@@ -2572,6 +2694,29 @@ document.getElementById("exportExcel").addEventListener("click", () => {
     const ws2 = XLSX.utils.aoa_to_sheet(summaryRows);
     ws2["!cols"] = [{wch: 24}, {wch: 12}, {wch: 14}, {wch: 14}];
     XLSX.utils.book_append_sheet(wb, ws2, "集計");
+
+    // メモ一覧シート（詳細メモが入っているブロックの先頭コマのみ抽出、時系列順）
+    const noteRows = [["日付", "曜日", "時刻", "カテゴリ名", "詳細メモ"]];
+    Object.entries(cellNotes)
+      .filter(([k]) => dates.includes(k.split("_")[0]) && k in cellData)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .forEach(([k, note]) => {
+        const [dateStr, timeStr] = k.split("_");
+        const dd = new Date(dateStr);
+        const color = cellData[k];
+        noteRows.push([
+          dateStr,
+          JP_WEEKDAYS[dd.getDay()],
+          `${timeStr.slice(0,2)}:${timeStr.slice(2,4)}`,
+          colorMap[color.toLowerCase()] || color,
+          note,
+        ]);
+      });
+    if (noteRows.length > 1) {
+      const ws4 = XLSX.utils.aoa_to_sheet(noteRows);
+      ws4["!cols"] = [{wch: 12}, {wch: 6}, {wch: 8}, {wch: 20}, {wch: 40}];
+      XLSX.utils.book_append_sheet(wb, ws4, "メモ一覧");
+    }
 
     // パレットシート
     const palRows = [["No.", "色コード", "カテゴリ名"]];
@@ -2623,7 +2768,12 @@ document.getElementById("exportCsv").addEventListener("click", () => {
       dates.forEach(d => {
         const key = `${d}_${timeCode}`;
         const color = cellData[key];
-        const val = color ? (colorMap[color.toLowerCase()] || color) : "";
+        let val = "";
+        if (color) {
+          const name = colorMap[color.toLowerCase()] || color;
+          const note = cellNotes[key];
+          val = note ? `${name}（${note.replace(/\n/g, " ")}）` : name;
+        }
         row.push(val.includes(",") || val.includes('"') ? `"${val.replace(/"/g, '""')}"` : val);
       });
       lines.push(row.join(","));
@@ -2654,6 +2804,7 @@ document.getElementById("exportJson").addEventListener("click", () => {
     exportedAt: new Date().toISOString(),
     palette: palette,
     cellData: cellData,
+    cellNotes: cellNotes,
     goalsData: goalsData,
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
@@ -2680,11 +2831,14 @@ document.getElementById("fileInput").addEventListener("change", e => {
       const data = JSON.parse(ev.target.result);
       if (!data.cellData) throw new Error("不正なフォーマット");
       const goalCount = data.goalsData ? Object.keys(data.goalsData).length : 0;
-      if (!confirm(`インポートすると現在のデータが上書きされます。続行しますか？\n\nセル: ${Object.keys(data.cellData).length}件\nパレット: ${(data.palette || []).length}色\n目標: ${goalCount}件`)) return;
+      const noteCount = data.cellNotes ? Object.keys(data.cellNotes).length : 0;
+      if (!confirm(`インポートすると現在のデータが上書きされます。続行しますか？\n\nセル: ${Object.keys(data.cellData).length}件\nメモ: ${noteCount}件\nパレット: ${(data.palette || []).length}色\n目標: ${goalCount}件`)) return;
       cellData = data.cellData || {};
+      cellNotes = data.cellNotes || {};
       if (Array.isArray(data.palette) && data.palette.length > 0) palette = data.palette;
       if (data.goalsData) goalsData = data.goalsData;
       saveCellData();
+      saveCellNotes();
       savePalette();
       saveGoals();
       clearHistory();
