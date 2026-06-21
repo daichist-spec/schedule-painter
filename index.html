@@ -844,6 +844,17 @@
   .schedule td.cell.colored.selecting {
     cursor: move;
   }
+  .schedule td.cell.colored.selecting.block-start {
+    cursor: ns-resize;
+    box-shadow: inset 0 2px 0 0 var(--accent);
+  }
+  .schedule td.cell.colored.selecting.block-end {
+    cursor: ns-resize;
+    box-shadow: inset 0 -2px 0 0 var(--accent);
+  }
+  .schedule td.cell.colored.selecting.block-start.block-end {
+    box-shadow: inset 0 2px 0 0 var(--accent), inset 0 -2px 0 0 var(--accent);
+  }
   .schedule td.cell.drag-preview {
     outline: 2px dashed var(--accent);
     outline-offset: -2px;
@@ -1316,12 +1327,12 @@
     <div class="help-section">
       <h3>🖱️ 選ぶ（まだ色は付きません）</h3>
       <ul>
-        <li><b>クリック</b>：そのコマだけを仮選択</li>
-        <li><b>Shift＋クリック</b>：直前の仮選択の起点から、今クリックしたコマまでの<b>連続する範囲</b>に仮選択を伸ばす。Shift＋クリックを繰り返せば、その都度範囲を伸ばせます</li>
-        <li><b>Cmd（Mac）／Ctrl（Win）＋クリック</b>：<b>不連続な複数コマ</b>を1つずつ仮選択に追加／削除（飛び石選択）</li>
-        <li><b>ドラッグ</b>：ドラッグした範囲をまとめて仮選択</li>
+        <li><b>クリック</b>：そのコマを仮選択。すでに色が付いているコマをクリックした場合は、<b>同じ色で連続するブロック全体</b>がまとめて選択されます</li>
+        <li><b>Shift＋クリック</b>：直前の仮選択の起点から、今クリックしたコマまでの<b>連続する範囲</b>に仮選択を伸ばす（範囲内に色付きブロックがあれば、そのブロック全体も含めて選択されます）。Shift＋クリックを繰り返せば、その都度範囲を伸ばせます</li>
+        <li><b>Cmd（Mac）／Ctrl（Win）＋クリック</b>：<b>ブロック単位</b>で1つずつ仮選択に追加／削除（飛び石選択）</li>
+        <li><b>ドラッグ</b>：ドラッグした範囲をまとめて仮選択（範囲内のブロックも丸ごと含まれます）</li>
       </ul>
-      <p class="help-note">これらの操作はどれも「仮選択」を作る・伸ばすだけで、まだ色は付きません。色を付ける・消すには、下記いずれかの方法で<b>確定</b>してください。</p>
+      <p class="help-note">これらの操作はどれも「仮選択」を作る・伸ばすだけで、まだ色は付きません。色を付ける・消すには、下記いずれかの方法で<b>確定</b>してください。なお、すでに色が付いている部分は常にブロック単位で扱われます（ブロックの一部だけを選ぶことはできません）。</p>
     </div>
 
     <div class="help-section">
@@ -1330,7 +1341,7 @@
         <li><b>左パネルの色見本をクリック</b>：仮選択しているコマに、ポップアップを開かずその色を即適用</li>
         <li><b>仮選択中のコマをダブルクリック</b>：カテゴリ選択ポップアップを開く（新しい色・名前もその場で作成できます）</li>
         <li><b>画面下に出る確定バーの「カテゴリを選ぶ」</b>：同じくポップアップを開く</li>
-        <li><b>確定バーの「🧽 削除」、または Backspace／Delete キー</b>：仮選択中のコマを消去</li>
+        <li><b>確定バーの「🧽 削除」、または Backspace／Delete キー</b>：仮選択中のブロック（複数選んでいればまとめて）を消去</li>
         <li><b>確定バーの「選択解除」</b>：何もせず仮選択をクリア</li>
       </ul>
     </div>
@@ -1343,7 +1354,13 @@
 
     <div class="help-section">
       <h3>↔️ 既存の予定を移動する</h3>
-      <p>すでに色が付いているコマを選択した状態で、その選択範囲を<b>もう一度ドラッグ</b>すると、そのままの形を保って別の時間帯・別の日に移動できます（コマの数や飛び石の間隔も保たれます）。</p>
+      <p>すでに色が付いているブロックを選択した状態で、その<b>内側</b>をもう一度ドラッグすると、ブロックの形を保ったまま別の時間帯・別の日に移動できます。</p>
+    </div>
+
+    <div class="help-section">
+      <h3>↕️ ブロックの長さを変える（リサイズ）</h3>
+      <p>選択中のブロックの<b>一番上または一番下のコマそのもの</b>をドラッグすると、その端だけが伸び縮みします（反対側の端は固定されたまま）。他の色付きブロックにぶつかる手前で自動的に止まります。</p>
+      <p class="help-note">リサイズができるのは、選択中のブロックが1つの連続した塊である場合のみです。飛び石で複数のブロックをまとめて選んでいる時は、内側をドラッグすると「移動」になります。</p>
     </div>
 
     <div class="help-section">
@@ -1493,6 +1510,98 @@ function slotToKey(slot) {
   const m = (slotInDay % 4) * 15;
   const dateStr = `${y}-${String(mo).padStart(2,"0")}-${String(da).padStart(2,"0")}`;
   return `${dateStr}_${String(h).padStart(2,"0")}${String(m).padStart(2,"0")}`;
+}
+
+// ========== ブロック単位の操作ヘルパー ==========
+// 「ブロック」とは、同じ日付の中で同じ色が連続しているセルの集まり。
+// データの保存形式はあくまでセル単位（cellData/cellNotes）のままで、
+// 選択・移動・コピー・リサイズなどの操作はこの関数群を通じて「ブロック単位」で行う。
+
+// 指定したキーが色付きセルなら、それを含む同色連続ブロック全体のキー配列（時系列順）を返す。
+// 色が無いセルを渡した場合は、そのキー単体だけの配列を返す。
+function getBlockKeysContaining(key) {
+  const color = cellData[key];
+  if (!color) return [key];
+  const baseSlot = keyToSlot(key);
+  const dayStartSlot = baseSlot - (baseSlot % 96); // その日の0:00のスロット
+
+  let lo = baseSlot, hi = baseSlot;
+  while (lo - 1 >= dayStartSlot && cellData[slotToKey(lo - 1)] === color) lo--;
+  while (hi + 1 < dayStartSlot + 96 && cellData[slotToKey(hi + 1)] === color) hi++;
+
+  const keys = [];
+  for (let s = lo; s <= hi; s++) keys.push(slotToKey(s));
+  return keys;
+}
+
+// 複数のキー（クリック・Shift・Cmd等で集めたもの）それぞれについて、
+// 色付きならそのブロック全体に展開し、重複を除いた配列を返す（時系列順にソート）。
+function expandKeysToBlocks(keys) {
+  const set = new Set();
+  keys.forEach(key => {
+    getBlockKeysContaining(key).forEach(k => set.add(k));
+  });
+  return [...set].sort();
+}
+
+// キー配列を「同じ日付かつ連続するスロット」のグループに分割する。
+// 移動・リサイズで、複数の別々のブロックをまとめて扱う際の単位分解に使う。
+function splitIntoContiguousGroups(keys) {
+  if (keys.length === 0) return [];
+  const sorted = [...keys].sort();
+  const groups = [];
+  let current = [sorted[0]];
+  for (let i = 1; i < sorted.length; i++) {
+    const prevSlot = keyToSlot(sorted[i - 1]);
+    const curSlot = keyToSlot(sorted[i]);
+    const sameDate = sorted[i].split("_")[0] === sorted[i - 1].split("_")[0];
+    if (sameDate && curSlot === prevSlot + 1) {
+      current.push(sorted[i]);
+    } else {
+      groups.push(current);
+      current = [sorted[i]];
+    }
+  }
+  groups.push(current);
+  return groups;
+}
+
+// リサイズ中：ドラッグ中のポインタが指すセル(targetKey)に応じて、
+// resizeBlockKeys/resizeEdgeType/resizeOriginalKeysを基に「新しいブロックのキー配列」を計算する。
+// 同じ日付の範囲内に制限し、他の色付きブロック（自分以外）の手前で止める。最低1コマは残す。
+function computeResizedBlockKeys(targetKey) {
+  const original = resizeOriginalKeys;
+  const fixedKey = resizeEdgeType === "start" ? original[original.length - 1] : original[0];
+  const fixedSlot = keyToSlot(fixedKey);
+  const dateStr = fixedKey.split("_")[0];
+  const dayStartSlot = fixedSlot - (fixedSlot % 96);
+  const dayEndSlot = dayStartSlot + 95;
+
+  let targetSlot = keyToSlot(targetKey);
+  // 同じ日付の範囲内にクランプ（日をまたぐリサイズは未対応）
+  targetSlot = Math.max(dayStartSlot, Math.min(dayEndSlot, targetSlot));
+
+  let lo, hi;
+  if (resizeEdgeType === "end") {
+    lo = fixedSlot;
+    hi = Math.max(fixedSlot, targetSlot); // 最低1コマ（fixed自身）は残す
+    // 他の色付きブロックにぶつかる手前で止める
+    for (let s = fixedSlot + 1; s <= hi; s++) {
+      const k = slotToKey(s);
+      if (cellData[k] && !original.includes(k)) { hi = s - 1; break; }
+    }
+  } else {
+    hi = fixedSlot;
+    lo = Math.min(fixedSlot, targetSlot);
+    for (let s = fixedSlot - 1; s >= lo; s--) {
+      const k = slotToKey(s);
+      if (cellData[k] && !original.includes(k)) { lo = s + 1; break; }
+    }
+  }
+
+  const keys = [];
+  for (let s = lo; s <= hi; s++) keys.push(slotToKey(s));
+  return keys;
 }
 
 // ========== 目標 ==========
@@ -1742,7 +1851,12 @@ function renderWeek() {
         if (isHourTop) cls.push("hour-top");
         if (i === 5) cls.push("sat");
         if (i === 6) cls.push("sun");
-        if (color) cls.push("colored");
+        if (color) {
+          cls.push("colored");
+          const dayArr = dayColors[i];
+          if (dayArr[idx - 1] !== color) cls.push("block-start");
+          if (dayArr[idx + 1] !== color) cls.push("block-end");
+        }
         const style = color ? `style="background:${color};"` : "";
         const label = dayLabels[i].get(idx);
         const labelHtml = label ? `<span class="cell-label">${escapeHtml(label)}</span>` : "";
@@ -1794,7 +1908,11 @@ function renderDay() {
       if (isHourTop) cls.push("hour-top");
       if (dow === 6) cls.push("sat");
       if (dow === 0) cls.push("sun");
-      if (color) cls.push("colored");
+      if (color) {
+        cls.push("colored");
+        if (colors[idx - 1] !== color) cls.push("block-start");
+        if (colors[idx + 1] !== color) cls.push("block-end");
+      }
       const style = color ? `style="background:${color};"` : "";
       const label = labels.get(idx);
       const labelHtml = label ? `<span class="cell-label">${escapeHtml(label)}</span>` : "";
@@ -1932,11 +2050,16 @@ function getKeysBetween(startTd, endTd) {
 }
 
 // ---- ドラッグ状態 ----
-let dragMode = null;        // null | "select" | "move"
+let dragMode = null;        // null | "select" | "move" | "resize"
 let dragAnchorTd = null;    // ドラッグ開始セル
 let dragMoved = false;      // pointerdown後に実際に別セルへ移動したか（クリックとドラッグの判別用）
 let moveSourceKeys = [];    // 移動ドラッグ開始時点の仮選択キー（元の位置）
 let moveSourceColors = {};  // 移動元の各キーの色（key -> color）
+let resizeEdgeType = null;       // "start" | "end"：どちら側の端をドラッグしているか
+let resizeBlockKeys = [];        // リサイズ対象ブロックの現在のキー配列（時系列順）
+let resizeOriginalKeys = [];     // リサイズ開始時点の元のキー配列（キャンセル時の復元・差分計算に使用）
+let resizeColor = null;          // リサイズ対象ブロックの色
+let resizeNote = null;           // リサイズ対象ブロックのメモ（先頭キーに紐付くもの）
 
 function findCellAt(x, y) {
   const el = document.elementFromPoint(x, y);
@@ -1959,14 +2082,34 @@ function attachCellEvents() {
       const isToggleMod = e.metaKey || e.ctrlKey;
       const isShift = e.shiftKey;
 
-      // 「すでに仮選択中の色付きセル」から、モディファイアなしでドラッグを始めた場合は「移動」
       const isOnProvisionalColored = provisionalKeys.includes(key) && cellData[key] && !isToggleMod && !isShift;
-      dragMode = isOnProvisionalColored ? "move" : "select";
 
-      if (dragMode === "move") {
+      // リサイズ判定：選択中のブロックが単一の連続グループで、かつ
+      // クリックしたセルがそのブロックの先頭または末尾そのものである場合
+      let resizeEdge = null;
+      if (isOnProvisionalColored) {
+        const groups = splitIntoContiguousGroups(provisionalKeys);
+        if (groups.length === 1) {
+          const sorted = groups[0];
+          if (key === sorted[0]) resizeEdge = "start";
+          else if (key === sorted[sorted.length - 1]) resizeEdge = "end";
+        }
+      }
+
+      if (resizeEdge) {
+        dragMode = "resize";
+        resizeEdgeType = resizeEdge;
+        resizeBlockKeys = [...provisionalKeys].sort();
+        resizeColor = cellData[resizeBlockKeys[0]];
+        resizeNote = cellNotes[resizeBlockKeys[0]];
+        resizeOriginalKeys = [...resizeBlockKeys];
+      } else if (isOnProvisionalColored) {
+        dragMode = "move";
         moveSourceKeys = [...provisionalKeys];
         moveSourceColors = {};
         moveSourceKeys.forEach(k => { moveSourceColors[k] = cellData[k]; });
+      } else {
+        dragMode = "select";
       }
 
       try { td.setPointerCapture(e.pointerId); } catch {}
@@ -1982,7 +2125,8 @@ function attachCellEvents() {
       if (dragMode === "select") {
         const isToggleMod = e.metaKey || e.ctrlKey;
         if (isToggleMod) return; // 飛び石は1点ずつの確定操作なのでドラッグでは伸ばさない
-        provisionalKeys = getKeysBetween(dragAnchorTd, target);
+        const rangeKeys = getKeysBetween(dragAnchorTd, target);
+        provisionalKeys = expandKeysToBlocks(rangeKeys);
         applySelectionVisual();
       } else if (dragMode === "move") {
         // 移動先のプレビュー表示：移動元の各キーをオフセット分ずらした位置をハイライト
@@ -1995,6 +2139,16 @@ function attachCellEvents() {
           const previewTd = document.querySelector(`.schedule td.cell[data-key="${newKey}"]`);
           if (previewTd) previewTd.classList.add("drag-preview");
         });
+      } else if (dragMode === "resize") {
+        clearDragPreview();
+        const newKeys = computeResizedBlockKeys(target.dataset.key);
+        if (newKeys) {
+          resizeBlockKeys = newKeys;
+          newKeys.forEach(k => {
+            const previewTd = document.querySelector(`.schedule td.cell[data-key="${k}"]`);
+            if (previewTd) previewTd.classList.add("drag-preview");
+          });
+        }
       }
     });
 
@@ -2019,6 +2173,10 @@ function attachCellEvents() {
         if (delta !== 0) {
           moveSelectionBy(delta);
         }
+      } else if (dragMode === "resize") {
+        clearDragPreview();
+        const newKeys = computeResizedBlockKeys(target.dataset.key) || resizeBlockKeys;
+        applyResize(newKeys);
       }
 
       dragAnchorTd = null;
@@ -2048,25 +2206,26 @@ function attachCellEvents() {
 function handleCellClick(td, mod) {
   const key = td.dataset.key;
   lastClickedKey = key;
+  const blockKeys = getBlockKeysContaining(key); // クリックしたセルを含むブロック全体（色なしなら自分自身のみ）
 
   if (mod.metaKey) {
-    // 飛び石選択：クリックしたコマをON/OFFで積み重ねる
-    const idx = provisionalKeys.indexOf(key);
-    if (idx === -1) {
-      provisionalKeys.push(key);
-      td.classList.add("selecting");
+    // 飛び石選択：クリックしたブロック全体をON/OFFで積み重ねる
+    const alreadyIn = blockKeys.every(k => provisionalKeys.includes(k));
+    if (alreadyIn) {
+      provisionalKeys = provisionalKeys.filter(k => !blockKeys.includes(k));
     } else {
-      provisionalKeys.splice(idx, 1);
-      td.classList.remove("selecting");
+      provisionalKeys = expandKeysToBlocks([...provisionalKeys, ...blockKeys]);
     }
     shiftAnchorTd = td;
+    applySelectionVisual();
     updateMultiselectBar();
     return;
   }
 
   if (mod.shiftKey && shiftAnchorTd) {
-    // Shift+クリック連続：仮選択範囲を起点から伸ばす（ポップアップは出さない）
-    provisionalKeys = getKeysBetween(shiftAnchorTd, td);
+    // Shift+クリック連続：仮選択範囲を起点から伸ばす（含まれるブロックは丸ごと展開）
+    const rangeKeys = getKeysBetween(shiftAnchorTd, td);
+    provisionalKeys = expandKeysToBlocks(rangeKeys);
     applySelectionVisual();
     updateMultiselectBar();
     return;
@@ -2074,14 +2233,14 @@ function handleCellClick(td, mod) {
 
   // モディファイアなしの単発クリック
   if (provisionalKeys.includes(key) && provisionalKeys.length > 0) {
-    // 既に仮選択されているセルを単純クリック → 何もしない（仮選択は維持。誤操作防止）
+    // 既に仮選択されているセル（ブロックの一部）を単純クリック → 何もしない（仮選択は維持。誤操作防止）
     return;
   }
-  // それ以外の場所をクリック → 仮選択を解除して、そのセルを新規仮選択
+  // それ以外の場所をクリック → 仮選択を解除して、そのブロック全体を新規仮選択
   clearSelectionVisual();
-  provisionalKeys = [key];
+  provisionalKeys = blockKeys;
   shiftAnchorTd = td;
-  td.classList.add("selecting");
+  applySelectionVisual();
   updateMultiselectBar();
 }
 
@@ -2108,11 +2267,44 @@ function moveSelectionBy(deltaSlots) {
     }
   });
 
-  applyCellChanges(changes, noteChanges);
+  // 描画タイミングの整合性のため、applyCellChanges（内部でrenderが呼ばれうる）の前に選択状態を更新しておく
   provisionalKeys = newKeys;
-  applySelectionVisual();
   updateMultiselectBar();
+
+  applyCellChanges(changes, noteChanges);
   showToast(`↔️ ${newKeys.length}コマを移動しました`);
+}
+
+// ブロックのリサイズを確定する。resizeOriginalKeys（元の範囲）からnewKeys（新しい範囲）へ、
+// 色とメモ（先頭キーに紐付くもの）を引き継ぎつつ反映する。
+function applyResize(newKeys) {
+  const oldSorted = [...resizeOriginalKeys].sort();
+  const newSorted = [...newKeys].sort();
+  if (oldSorted.length === newSorted.length && oldSorted.every((k, i) => k === newSorted[i])) {
+    return; // 変化なし
+  }
+
+  const changes = {};
+  // 元の範囲のうち、新しい範囲に含まれないセルは消す
+  oldSorted.forEach(k => { if (!newSorted.includes(k)) changes[k] = undefined; });
+  // 新しい範囲全体に色を適用
+  newSorted.forEach(k => { changes[k] = resizeColor; });
+
+  // メモは「新しい範囲の先頭キー」に付け直す。元のメモが別キーにあれば、そこは削除する
+  const noteChanges = {};
+  const newHeadKey = newSorted[0];
+  const oldHeadKey = oldSorted[0];
+  if (resizeNote) {
+    if (newHeadKey !== oldHeadKey) noteChanges[oldHeadKey] = undefined;
+    noteChanges[newHeadKey] = resizeNote;
+  }
+
+  // 描画タイミングの整合性のため、applyCellChanges（内部でrenderが呼ばれうる）の前に選択状態を更新しておく
+  provisionalKeys = newSorted;
+  updateMultiselectBar();
+
+  applyCellChanges(changes, noteChanges);
+  showToast(`↕️ ブロックの長さを${newSorted.length}コマに変更しました`);
 }
 
 // ---- 仮選択の確定バー ----
