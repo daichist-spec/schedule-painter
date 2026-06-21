@@ -951,6 +951,21 @@
     );
     cursor: pointer;
   }
+  /* 土日 × テンプレート下敷きが重なる場合は、土日の色を地色にして斜線を重ねる（土日であることが見えるように） */
+  .schedule td.cell.template-overlay.sat {
+    background: repeating-linear-gradient(
+      45deg,
+      var(--sat) 0px, var(--sat) 4px,
+      #cdeaf9 4px, #cdeaf9 8px
+    );
+  }
+  .schedule td.cell.template-overlay.sun {
+    background: repeating-linear-gradient(
+      45deg,
+      var(--sun) 0px, var(--sun) 4px,
+      #fbd0d0 4px, #fbd0d0 8px
+    );
+  }
   .schedule td.cell.template-overlay:hover { filter: brightness(0.97); }
   .template-label {
     color: var(--text-tertiary) !important;
