@@ -414,9 +414,31 @@
     padding: 6px;
     border: 2px solid transparent;
     border-radius: var(--radius-md);
-    transition: all 0.12s;
+    transition: background 0.12s, border-color 0.12s;
   }
   .palette-item:hover { background: var(--bg-subtle); }
+  .palette-item.dragging {
+    opacity: 0.4;
+  }
+  .palette-item.drag-over-top {
+    border-top-color: var(--accent);
+  }
+  .palette-item.drag-over-bottom {
+    border-bottom-color: var(--accent);
+  }
+  .palette-drag-handle {
+    flex-shrink: 0;
+    width: 16px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: grab;
+    color: var(--text-tertiary);
+    touch-action: none;
+  }
+  .palette-drag-handle:active { cursor: grabbing; }
+  .palette-drag-handle svg { width: 12px; height: 16px; }
   .palette-apply-btn {
     flex-shrink: 0;
     padding: 0;
@@ -1221,7 +1243,7 @@
     <div class="card">
       <h2>🎨 カテゴリ</h2>
       <div class="palette-hint">
-        グリッドをクリック／Shift+クリック／Cmd(Ctrl)+クリック／ドラッグでコマを選択（まだ色は付きません）。選んだ状態で、左の色見本をクリックすると即適用。ダブルクリックや画面下の確定バーからも選べます。
+        グリッドをクリック／Shift+クリック／Cmd(Ctrl)+クリック／ドラッグでコマを選択（まだ色は付きません）。選んだ状態で、左の色見本をクリックすると即適用。ダブルクリックや画面下の確定バーからも選べます。左端の「⠿」をドラッグすると、カテゴリの表示順を入れ替えられます。
       </div>
       <div class="palette-list" id="paletteList"></div>
       <div class="palette-actions">
@@ -1340,6 +1362,7 @@
     <div class="help-section">
       <h3>🏷️ カテゴリ（左パネル）</h3>
       <p>大きい色見本をクリックすると、仮選択中のコマにその色を即適用します。隣の小さな四角（色ピッカー）をクリックすると色自体を変更でき、名前欄をクリックすると名前を変更できます（どちらも即時反映）。✕ボタンでカテゴリ自体を削除できます（最低1色は残ります）。</p>
+      <p class="help-note">一番左にある「⠿」のハンドルをドラッグすると、カテゴリの表示順を自由に入れ替えられます。よく使うカテゴリを上に並べておくと、選びやすくなります。</p>
     </div>
 
     <div class="help-section">
@@ -1496,12 +1519,22 @@ function setupGoalListeners() {
 }
 
 // ========== パレット描画（編集パネル） ==========
+let paletteDragSrcIndex = null;
+
 function renderPalette() {
   const list = document.getElementById("paletteList");
   list.innerHTML = "";
   palette.forEach((p, i) => {
     const item = document.createElement("div");
     item.className = "palette-item";
+    item.dataset.index = i;
+
+    const handle = document.createElement("div");
+    handle.className = "palette-drag-handle";
+    handle.title = "ドラッグして並び替え";
+    handle.innerHTML = `<svg viewBox="0 0 12 16" fill="currentColor"><circle cx="3" cy="2" r="1.4"/><circle cx="9" cy="2" r="1.4"/><circle cx="3" cy="8" r="1.4"/><circle cx="9" cy="8" r="1.4"/><circle cx="3" cy="14" r="1.4"/><circle cx="9" cy="14" r="1.4"/></svg>`;
+    // ハンドルを押している間だけアイテム自体をdraggableにする（名前入力欄等の誤動作を防ぐ）
+    handle.addEventListener("pointerdown", () => { item.draggable = true; });
 
     const applyBtn = document.createElement("button");
     applyBtn.type = "button";
@@ -1543,6 +1576,49 @@ function renderPalette() {
       renderPalette();
     });
 
+    // ---- ドラッグ&ドロップで並び替え ----
+    item.addEventListener("dragstart", e => {
+      paletteDragSrcIndex = i;
+      item.classList.add("dragging");
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", String(i));
+    });
+    item.addEventListener("dragend", () => {
+      item.draggable = false;
+      item.classList.remove("dragging");
+      document.querySelectorAll(".palette-item").forEach(el => {
+        el.classList.remove("drag-over-top", "drag-over-bottom");
+      });
+      paletteDragSrcIndex = null;
+    });
+    item.addEventListener("dragover", e => {
+      if (paletteDragSrcIndex === null) return;
+      e.preventDefault();
+      const rect = item.getBoundingClientRect();
+      const isAfter = (e.clientY - rect.top) > rect.height / 2;
+      item.classList.toggle("drag-over-top", !isAfter);
+      item.classList.toggle("drag-over-bottom", isAfter);
+    });
+    item.addEventListener("dragleave", () => {
+      item.classList.remove("drag-over-top", "drag-over-bottom");
+    });
+    item.addEventListener("drop", e => {
+      e.preventDefault();
+      const srcIndex = paletteDragSrcIndex;
+      item.classList.remove("drag-over-top", "drag-over-bottom");
+      if (srcIndex === null || srcIndex === i) return;
+      const rect = item.getBoundingClientRect();
+      const isAfter = (e.clientY - rect.top) > rect.height / 2;
+      let destIndex = isAfter ? i + 1 : i;
+      const [moved] = palette.splice(srcIndex, 1);
+      if (srcIndex < destIndex) destIndex -= 1; // 抜いた分だけインデックスを補正
+      palette.splice(destIndex, 0, moved);
+      savePalette();
+      renderPalette();
+      showToast("📋 カテゴリの順番を変更しました");
+    });
+
+    item.appendChild(handle);
     item.appendChild(applyBtn);
     item.appendChild(sw);
     item.appendChild(name);
@@ -1550,6 +1626,10 @@ function renderPalette() {
     list.appendChild(item);
   });
 }
+// ハンドル以外の場所でpointerupした場合も含め、確実にdraggableをリセットする安全策
+document.addEventListener("pointerup", () => {
+  document.querySelectorAll(".palette-item[draggable='true']").forEach(el => { el.draggable = false; });
+});
 
 // パレットの色名を変更した際、すでに塗られているセルの集計表示（カテゴリ名）を最新化
 function refreshColoredCellLabels() {
