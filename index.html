@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
-<title>Paint Schedule — Visual Time Planner</title>
+<title>Schedule Painter — Visual Time Planner</title>
 <meta name="description" content="15分刻み・24時間の塗り絵スケジュール。月次・週次の目標管理、Excel/CSV/PNG出力。" />
 <meta name="theme-color" content="#0f172a" />
 
@@ -625,11 +625,44 @@
   }
 
   .schedule-scroll {
+    position: relative;
     overflow-x: auto;
     overflow-y: auto;
     max-height: calc(100vh - var(--sticky-offset, 69px) - 160px);
     -webkit-overflow-scrolling: touch;
     border-radius: var(--radius-md);
+  }
+
+  /* 現在時刻ライン（今日の列にだけ表示） */
+  .now-line {
+    position: absolute;
+    height: 0;
+    border-top: 2px solid #ef4444;
+    pointer-events: none;
+    z-index: 8;
+  }
+  .now-line-dot {
+    position: absolute;
+    left: -4px;
+    top: -4px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #ef4444;
+  }
+  .now-line-time {
+    position: absolute;
+    left: 4px;
+    top: -8px;
+    font-size: 9px;
+    font-weight: 700;
+    color: #fff;
+    background: #ef4444;
+    padding: 1px 4px;
+    border-radius: 3px;
+    line-height: 1.3;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
   }
 
   .schedule {
@@ -1354,7 +1387,7 @@
       </svg>
     </div>
     <div class="brand-text">
-      <h1>Paint Schedule</h1>
+      <h1>Schedule Painter</h1>
       <div class="tagline">Visual Time Planner — 15分刻みで見える時間管理</div>
     </div>
   </div>
@@ -1461,8 +1494,12 @@
       <div class="view-label" id="viewLabel">—</div>
       <div class="note" id="viewNote">💡 選択はクリック／Shift/Cmd+クリック／ドラッグ。確定はダブルクリックか左の色見本</div>
     </div>
-    <div class="schedule-scroll">
+    <div class="schedule-scroll" id="scheduleScroll">
       <table class="schedule week" id="scheduleTable"></table>
+      <div class="now-line" id="nowLine" style="display:none;">
+        <span class="now-line-dot"></span>
+        <span class="now-line-time" id="nowLineTime"></span>
+      </div>
     </div>
   </main>
 </div>
@@ -2276,7 +2313,51 @@ function render() {
   updateStatus();
   // データ変更等による再描画でDOMが作り直された後も、仮選択の見た目（ハイライト）を復元する
   if (provisionalKeys.length > 0) applySelectionVisual();
+  // テーブルのDOM更新（レイアウト）が確定した直後に計算するため、次フレームで実行する
+  requestAnimationFrame(updateNowLine);
 }
+
+// ========== 現在時刻ライン ==========
+// 週表示・日表示で、「今日」を含む列がある場合だけ、その列の上に現在時刻の横線を表示する。
+// 縦位置はテーブルの実際のセル位置（getBoundingClientRect）から比率計算するため、
+// 行の高さがビューによって違っても（週14px・日22px）正確に揃う。
+function updateNowLine() {
+  const line = document.getElementById("nowLine");
+  if (currentView === "month") { line.style.display = "none"; return; }
+
+  const today = new Date();
+  const todayStr = fmtDate(today);
+  // 今日を含む列のtd（hour-topの行限定だと取りこぼすので、data-keyの日付部分で判定）
+  const todayCells = Array.from(document.querySelectorAll(`.schedule td.cell[data-key^="${todayStr}_"]`));
+  if (todayCells.length === 0) { line.style.display = "none"; return; }
+
+  const scrollEl = document.getElementById("scheduleScroll");
+  const scrollRect = scrollEl.getBoundingClientRect();
+  const firstCell = todayCells[0];
+  const lastCell = todayCells[todayCells.length - 1];
+  const firstRect = firstCell.getBoundingClientRect();
+  const lastRect = lastCell.getBoundingClientRect();
+
+  // 0:00セルの上端 〜 23:45セルの下端　を「1日の範囲」として、現在時刻の比率を計算
+  const dayTopY = firstRect.top - scrollRect.top + scrollEl.scrollTop;
+  const dayBottomY = lastRect.bottom - scrollRect.top + scrollEl.scrollTop;
+  const dayHeightPx = dayBottomY - dayTopY;
+
+  const minutesNow = today.getHours() * 60 + today.getMinutes();
+  const ratio = minutesNow / (24 * 60);
+  const lineY = dayTopY + dayHeightPx * ratio;
+
+  const leftX = firstRect.left - scrollRect.left + scrollEl.scrollLeft;
+  const widthPx = firstRect.width;
+
+  line.style.display = "block";
+  line.style.top = `${lineY}px`;
+  line.style.left = `${leftX}px`;
+  line.style.width = `${widthPx}px`;
+  document.getElementById("nowLineTime").textContent =
+    `${String(today.getHours()).padStart(2,"0")}:${String(today.getMinutes()).padStart(2,"0")}`;
+}
+
 
 // その日（1列）の96コマ分の色配列から、「同じ色が連続するブロック」を検出し、
 // 各ブロックの中央インデックスに表示すべきテキスト（詳細メモがあればメモ、なければカテゴリ名）を割り当てたMapを返す。
@@ -3348,7 +3429,7 @@ document.getElementById("exportPng").addEventListener("click", async () => {
   header.style.cssText = "margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid #0f172a;";
   header.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;">
-      <div style="font-size:22px;font-weight:700;letter-spacing:-0.01em;">📅 Paint Schedule</div>
+      <div style="font-size:22px;font-weight:700;letter-spacing:-0.01em;">📅 Schedule Painter</div>
       <div style="font-size:12px;color:#94a3b8;">${new Date().toLocaleDateString("ja-JP")} 出力</div>
     </div>
     <div style="font-size:18px;font-weight:700;color:#2563eb;">${document.getElementById("viewLabel").textContent}</div>
@@ -3390,6 +3471,9 @@ document.getElementById("exportPng").addEventListener("click", async () => {
   // 画面上はグリッド部分を縦スクロール表示しているが、PNGには全体を写すため高さ制限を解除する
   const innerScroll = tableClone.querySelector(".schedule-scroll");
   if (innerScroll) innerScroll.style.cssText = "overflow:visible;max-height:none;border-radius:var(--radius-md);";
+  // 現在時刻ラインは画面上の補助表示なので、PNGには写さない
+  const innerNowLine = tableClone.querySelector(".now-line");
+  if (innerNowLine) innerNowLine.remove();
   container.appendChild(tableClone);
 
   // 集計
@@ -3424,7 +3508,7 @@ document.getElementById("exportPng").addEventListener("click", async () => {
     const dataUrl = canvas.toDataURL("image/png");
     const a = document.createElement("a");
     a.href = dataUrl;
-    a.download = `paint-schedule_${currentView}_${fmtDate(currentDate)}.png`;
+    a.download = `schedule-painter_${currentView}_${fmtDate(currentDate)}.png`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -3541,7 +3625,7 @@ document.getElementById("exportExcel").addEventListener("click", () => {
     ws3["!cols"] = [{wch: 6}, {wch: 12}, {wch: 28}];
     XLSX.utils.book_append_sheet(wb, ws3, "パレット");
 
-    XLSX.writeFile(wb, `paint-schedule_${currentView}_${fmtDate(currentDate)}.xlsx`);
+    XLSX.writeFile(wb, `schedule-painter_${currentView}_${fmtDate(currentDate)}.xlsx`);
     showToast("✅ Excelで保存しました");
   } catch (err) {
     console.error(err);
@@ -3566,7 +3650,7 @@ document.getElementById("exportCsv").addEventListener("click", () => {
     const sunday = addDays(monday, 6);
 
     const lines = [];
-    lines.push(`# Paint Schedule Export`);
+    lines.push(`# Schedule Painter Export`);
     lines.push(`# 月の目標 (${currentDate.getFullYear()}/${currentDate.getMonth()+1}): ${(goalsData[monthKey] || "").replace(/\n/g, " | ")}`);
     lines.push(`# 週の目標 (${monday.getMonth()+1}/${monday.getDate()}–${sunday.getMonth()+1}/${sunday.getDate()}): ${(goalsData[weekKey] || "").replace(/\n/g, " | ")}`);
     lines.push("");
@@ -3600,7 +3684,7 @@ document.getElementById("exportCsv").addEventListener("click", () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `paint-schedule_${currentView}_${fmtDate(currentDate)}.csv`;
+    a.download = `schedule-painter_${currentView}_${fmtDate(currentDate)}.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -3629,7 +3713,7 @@ document.getElementById("exportJson").addEventListener("click", () => {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `paint-schedule_backup_${fmtDate(new Date())}.json`;
+  a.download = `schedule-painter_backup_${fmtDate(new Date())}.json`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -3702,7 +3786,17 @@ function updateStickyOffset() {
   document.documentElement.style.setProperty("--sticky-offset", `${offset}px`);
 }
 updateStickyOffset();
-window.addEventListener("resize", updateStickyOffset);
+window.addEventListener("resize", () => {
+  updateStickyOffset();
+  updateNowLine();
+});
+
+// 現在時刻ラインを1分ごとに更新する。タブが非アクティブだった間にずれないよう、
+// 再びアクティブになった時（visibilitychange）にも即時再計算する。
+setInterval(updateNowLine, 60000);
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) updateNowLine();
+});
 
 </script>
 </body>
