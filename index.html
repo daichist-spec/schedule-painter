@@ -13,6 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
     /* カラーシステム */
@@ -1370,6 +1371,44 @@
   .schedule-scroll::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
   .sidebar::-webkit-scrollbar-track,
   .schedule-scroll::-webkit-scrollbar-track { background: transparent; }
+
+  /* ========== アカウント／ログイン ========== */
+  .account-btn { position: relative; }
+  .account-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--text-tertiary);
+    flex-shrink: 0;
+  }
+  .account-dot.online { background: var(--success); }
+  .account-tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--bg-subtle);
+    border-radius: var(--radius-md);
+    padding: 3px;
+  }
+  .account-tab {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 8px 10px;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    color: var(--text-secondary);
+    border-radius: 5px;
+    transition: all 0.15s;
+  }
+  .account-tab.active {
+    background: var(--bg-panel);
+    color: var(--accent);
+    box-shadow: var(--shadow-sm);
+  }
+  .modal-cancel-btn.danger-text { color: var(--danger); }
+  .modal-cancel-btn.danger-text:hover { color: #b91c1c; }
 </style>
 </head>
 <body>
@@ -1392,6 +1431,10 @@
     </div>
   </div>
   <div class="header-actions">
+    <button class="btn account-btn" id="accountBtn" title="ログイン / アカウント">
+      <span class="account-dot" id="accountDot"></span>
+      <span id="accountBtnLabel">ログイン</span>
+    </button>
     <button class="btn icon-only" id="helpBtn" title="使い方ヘルプ">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <circle cx="12" cy="12" r="10"/>
@@ -1699,6 +1742,47 @@
   </div>
 </div>
 
+<!-- ログイン / アカウントモーダル -->
+<div class="modal-overlay" id="accountOverlay">
+  <div class="modal-card" id="accountModalCard">
+    <div class="modal-header">
+      <div class="modal-title" id="accountModalTitle">ログイン</div>
+      <button type="button" class="help-close-btn" id="accountCloseBtn">✕</button>
+    </div>
+
+    <!-- ログイン中は non-hidden、未ログインは hidden -->
+    <div id="accountSignedInView" style="display:none;">
+      <p class="modal-range" style="margin-bottom:14px;">ログイン中: <b id="accountEmailLabel" style="color:var(--text-primary);"></b></p>
+      <p style="font-size:12.5px;color:var(--text-secondary);line-height:1.6;margin:0 0 16px;">このアカウントでログインした端末どうしで、スケジュール・カテゴリ・目標が自動的に同期されます。</p>
+      <div id="accountSyncStatus" style="font-size:12px;color:var(--text-tertiary);margin-bottom:16px;">—</div>
+      <div class="modal-footer" style="justify-content:space-between;">
+        <button type="button" class="modal-cancel-btn danger-text" id="accountLogoutBtn">ログアウト</button>
+        <button type="button" class="modal-cancel-btn" id="accountCloseBtn2">閉じる</button>
+      </div>
+    </div>
+
+    <!-- 未ログイン: ログイン／新規登録フォーム -->
+    <div id="accountSignedOutView">
+      <div class="account-tabs">
+        <button type="button" class="account-tab active" id="accountTabLogin" data-mode="login">ログイン</button>
+        <button type="button" class="account-tab" id="accountTabSignup" data-mode="signup">新規登録</button>
+      </div>
+      <p style="font-size:12px;color:var(--text-tertiary);line-height:1.6;margin:12px 0 16px;">
+        ログインすると、このスケジュールをクラウドに保存し、他の端末（スマホ・PC）からも同じ内容にアクセスできるようになります。ログインしなくても、これまで通りこの端末だけで使い続けられます。
+      </p>
+      <div class="modal-section-label" style="margin-top:0;">メールアドレス</div>
+      <input type="email" class="modal-note-input" id="accountEmailInput" placeholder="you@example.com" autocomplete="email" style="min-height:auto;" />
+      <div class="modal-section-label">パスワード</div>
+      <input type="password" class="modal-note-input" id="accountPasswordInput" placeholder="8文字以上" autocomplete="current-password" style="min-height:auto;" />
+      <div id="accountErrorMsg" style="display:none;color:var(--danger);font-size:12px;margin-top:10px;"></div>
+      <div class="modal-footer" style="justify-content:space-between;align-items:center;">
+        <button type="button" class="modal-cancel-btn" id="accountCloseBtn3">キャンセル</button>
+        <button type="button" class="modal-apply-btn" id="accountSubmitBtn">ログイン</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 // ========== 設定 ==========
 const STORAGE_KEY = "paint_schedule_v3";
@@ -1725,6 +1809,112 @@ const DEFAULT_DATE_TYPES = [
   { id: "dayoff", icon: "🌙", name: "休み", templates: [] },
 ];
 
+// ========== クラウド同期（Supabase）==========
+// ここに自分のSupabaseプロジェクトの Project URL と anon public key を入れてください。
+// Supabase管理画面 → Project Settings → API で確認できます。
+// 未設定（空文字のまま）の場合、ログイン機能はオフになり、これまで通りlocalStorageのみで動作します。
+const SUPABASE_URL = "https://zfdnumwcijotzadsykww.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_ynMYQh6pr5fB6ZKPk4Yjxw_jNFhujFw";
+const SYNC_TABLE = "schedules"; // Supabase側に作成するテーブル名
+
+const supabaseClient = (SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase)
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
+
+let currentUser = null; // ログイン中のSupabaseユーザー（未ログインならnull）
+let cloudSyncTimer = null;
+let isApplyingCloudData = false; // クラウドから受け取ったデータを反映中は、再送信ループを防ぐためtrueにする
+let lastSyncStatus = ""; // アカウントモーダルに表示する簡単なステータス文言
+
+// 現在のアプリ状態をクラウド保存用の1つのJSONにまとめる（JSONバックアップと同じ形）
+function buildSyncPayload() {
+  return {
+    version: 3,
+    palette: palette,
+    cellData: cellData,
+    cellNotes: cellNotes,
+    goalsData: goalsData,
+    dateTypes: dateTypes,
+    dateAssignments: dateAssignments,
+  };
+}
+
+// クラウドから受け取ったデータをローカルの状態に反映して再描画する（JSON読み込みと同じ処理）
+function applyCloudPayload(data) {
+  if (!data) return;
+  isApplyingCloudData = true;
+  cellData = data.cellData || {};
+  cellNotes = data.cellNotes || {};
+  if (Array.isArray(data.palette) && data.palette.length > 0) palette = data.palette;
+  if (data.goalsData) goalsData = data.goalsData;
+  if (Array.isArray(data.dateTypes)) dateTypes = data.dateTypes;
+  if (data.dateAssignments) dateAssignments = data.dateAssignments;
+  saveCellData();
+  saveCellNotes();
+  savePalette();
+  saveGoals();
+  saveDateTypes();
+  saveDateAssignments();
+  if (typeof clearHistory === "function") clearHistory();
+  renderPalette();
+  renderDateTypeList();
+  render();
+  isApplyingCloudData = false;
+}
+
+// ログイン中に何か変更があるたび、少し待ってからまとめてクラウドへ送信する（連続操作のたびに通信しないため）
+function scheduleCloudSync() {
+  if (!supabaseClient || !currentUser || isApplyingCloudData) return;
+  clearTimeout(cloudSyncTimer);
+  updateSyncStatus("保存中…");
+  cloudSyncTimer = setTimeout(pushToCloud, 1500);
+}
+
+async function pushToCloud() {
+  if (!supabaseClient || !currentUser) return;
+  try {
+    const { error } = await supabaseClient.from(SYNC_TABLE).upsert({
+      user_id: currentUser.id,
+      data: buildSyncPayload(),
+      updated_at: new Date().toISOString(),
+    });
+    if (error) throw error;
+    updateSyncStatus("✅ 同期済み（" + new Date().toLocaleTimeString("ja-JP") + "）");
+  } catch (err) {
+    console.error("クラウド保存に失敗:", err);
+    updateSyncStatus("⚠️ 同期に失敗しました: " + (err.message || err));
+  }
+}
+
+// ログイン直後に1度だけ呼ぶ：クラウドにデータがあれば読み込み、無ければ今の端末のデータを最初のクラウドデータとしてアップロードする
+async function pullFromCloud() {
+  if (!supabaseClient || !currentUser) return;
+  updateSyncStatus("読み込み中…");
+  try {
+    const { data, error } = await supabaseClient
+      .from(SYNC_TABLE)
+      .select("data, updated_at")
+      .eq("user_id", currentUser.id)
+      .maybeSingle();
+    if (error) throw error;
+    if (data && data.data) {
+      applyCloudPayload(data.data);
+      updateSyncStatus("✅ クラウドのデータを読み込みました（" + new Date(data.updated_at).toLocaleString("ja-JP") + "時点）");
+    } else {
+      await pushToCloud();
+    }
+  } catch (err) {
+    console.error("クラウド読み込みに失敗:", err);
+    updateSyncStatus("⚠️ 読み込みに失敗しました: " + (err.message || err));
+  }
+}
+
+function updateSyncStatus(text) {
+  lastSyncStatus = text;
+  const el = document.getElementById("accountSyncStatus");
+  if (el) el.textContent = text;
+}
+
 // ========== 状態 ==========
 let palette = loadPalette();
 let currentDate = new Date(); currentDate.setHours(0,0,0,0);
@@ -1745,13 +1935,13 @@ function loadCellData() {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); }
   catch { return {}; }
 }
-function saveCellData() { localStorage.setItem(STORAGE_KEY, JSON.stringify(cellData)); }
+function saveCellData() { localStorage.setItem(STORAGE_KEY, JSON.stringify(cellData)); scheduleCloudSync(); }
 
 function loadCellNotes() {
   try { return JSON.parse(localStorage.getItem(NOTES_KEY) || "{}"); }
   catch { return {}; }
 }
-function saveCellNotes() { localStorage.setItem(NOTES_KEY, JSON.stringify(cellNotes)); }
+function saveCellNotes() { localStorage.setItem(NOTES_KEY, JSON.stringify(cellNotes)); scheduleCloudSync(); }
 
 function loadDateTypes() {
   try {
@@ -1760,13 +1950,13 @@ function loadDateTypes() {
   } catch {}
   return JSON.parse(JSON.stringify(DEFAULT_DATE_TYPES));
 }
-function saveDateTypes() { localStorage.setItem(DATE_TYPES_KEY, JSON.stringify(dateTypes)); }
+function saveDateTypes() { localStorage.setItem(DATE_TYPES_KEY, JSON.stringify(dateTypes)); scheduleCloudSync(); }
 
 function loadDateAssignments() {
   try { return JSON.parse(localStorage.getItem(DATE_ASSIGN_KEY) || "{}"); }
   catch { return {}; }
 }
-function saveDateAssignments() { localStorage.setItem(DATE_ASSIGN_KEY, JSON.stringify(dateAssignments)); }
+function saveDateAssignments() { localStorage.setItem(DATE_ASSIGN_KEY, JSON.stringify(dateAssignments)); scheduleCloudSync(); }
 
 function loadPalette() {
   try {
@@ -1775,13 +1965,13 @@ function loadPalette() {
   } catch {}
   return JSON.parse(JSON.stringify(DEFAULT_PALETTE));
 }
-function savePalette() { localStorage.setItem(PALETTE_KEY, JSON.stringify(palette)); }
+function savePalette() { localStorage.setItem(PALETTE_KEY, JSON.stringify(palette)); scheduleCloudSync(); }
 
 function loadGoals() {
   try { return JSON.parse(localStorage.getItem(GOALS_KEY) || "{}"); }
   catch { return {}; }
 }
-function saveGoals() { localStorage.setItem(GOALS_KEY, JSON.stringify(goalsData)); }
+function saveGoals() { localStorage.setItem(GOALS_KEY, JSON.stringify(goalsData)); scheduleCloudSync(); }
 
 // ========== 日付 ==========
 function getMondayOf(d) {
@@ -3771,11 +3961,126 @@ function showToast(msg) {
   toastTimer = setTimeout(() => t.classList.remove("show"), 2200);
 }
 
+// ========== ログイン／アカウントUI ==========
+const accountBtn = document.getElementById("accountBtn");
+const accountDot = document.getElementById("accountDot");
+const accountBtnLabel = document.getElementById("accountBtnLabel");
+const accountOverlay = document.getElementById("accountOverlay");
+const accountSignedInView = document.getElementById("accountSignedInView");
+const accountSignedOutView = document.getElementById("accountSignedOutView");
+const accountEmailLabel = document.getElementById("accountEmailLabel");
+const accountEmailInput = document.getElementById("accountEmailInput");
+const accountPasswordInput = document.getElementById("accountPasswordInput");
+const accountErrorMsg = document.getElementById("accountErrorMsg");
+const accountSubmitBtn = document.getElementById("accountSubmitBtn");
+const accountModalTitle = document.getElementById("accountModalTitle");
+let accountMode = "login"; // "login" または "signup"
+
+function openAccountModal() {
+  accountErrorMsg.style.display = "none";
+  accountOverlay.classList.add("show");
+  if (currentUser) {
+    accountSignedInView.style.display = "";
+    accountSignedOutView.style.display = "none";
+    accountEmailLabel.textContent = currentUser.email;
+    updateSyncStatus(lastSyncStatus || "—");
+  } else {
+    accountSignedInView.style.display = "none";
+    accountSignedOutView.style.display = "";
+  }
+}
+function closeAccountModal() { accountOverlay.classList.remove("show"); }
+
+accountBtn.addEventListener("click", openAccountModal);
+document.getElementById("accountCloseBtn").addEventListener("click", closeAccountModal);
+document.getElementById("accountCloseBtn2").addEventListener("click", closeAccountModal);
+document.getElementById("accountCloseBtn3").addEventListener("click", closeAccountModal);
+accountOverlay.addEventListener("click", e => { if (e.target.id === "accountOverlay") closeAccountModal(); });
+
+function setAccountMode(mode) {
+  accountMode = mode;
+  document.getElementById("accountTabLogin").classList.toggle("active", mode === "login");
+  document.getElementById("accountTabSignup").classList.toggle("active", mode === "signup");
+  accountModalTitle.textContent = mode === "login" ? "ログイン" : "新規登録";
+  accountSubmitBtn.textContent = mode === "login" ? "ログイン" : "登録する";
+  accountErrorMsg.style.display = "none";
+}
+document.getElementById("accountTabLogin").addEventListener("click", () => setAccountMode("login"));
+document.getElementById("accountTabSignup").addEventListener("click", () => setAccountMode("signup"));
+
+function showAccountError(msg) {
+  accountErrorMsg.textContent = msg;
+  accountErrorMsg.style.display = "block";
+}
+
+function updateAccountButton() {
+  if (currentUser) {
+    accountDot.classList.add("online");
+    accountBtnLabel.textContent = currentUser.email.split("@")[0];
+  } else {
+    accountDot.classList.remove("online");
+    accountBtnLabel.textContent = "ログイン";
+  }
+}
+
+accountSubmitBtn.addEventListener("click", async () => {
+  if (!supabaseClient) {
+    showAccountError("クラウド機能が未設定です（SUPABASE_URL / SUPABASE_ANON_KEY 未設定）");
+    return;
+  }
+  const email = accountEmailInput.value.trim();
+  const password = accountPasswordInput.value;
+  if (!email || !password) { showAccountError("メールアドレスとパスワードを入力してください"); return; }
+  accountSubmitBtn.disabled = true;
+  accountErrorMsg.style.display = "none";
+  try {
+    if (accountMode === "signup") {
+      const { data, error } = await supabaseClient.auth.signUp({ email, password });
+      if (error) throw error;
+      if (data.session) {
+        showToast("✅ 登録してログインしました");
+        closeAccountModal();
+      } else {
+        showAccountError("確認メールを送りました。メール内のリンクを開いてから、ログインしてください。");
+      }
+    } else {
+      const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      showToast("✅ ログインしました");
+      closeAccountModal();
+    }
+  } catch (err) {
+    showAccountError(err.message || String(err));
+  } finally {
+    accountSubmitBtn.disabled = false;
+  }
+});
+
+document.getElementById("accountLogoutBtn").addEventListener("click", async () => {
+  if (!supabaseClient) return;
+  await supabaseClient.auth.signOut();
+  showToast("ログアウトしました");
+  closeAccountModal();
+});
+
+// Supabaseのログイン状態が変わるたびに呼ばれる（起動時の復元も含む）
+function initAuth() {
+  if (!supabaseClient) return; // SUPABASE_URL/ANON_KEY未設定時はログイン機能を丸ごとオフにする
+  supabaseClient.auth.onAuthStateChange((event, session) => {
+    currentUser = session ? session.user : null;
+    updateAccountButton();
+    if (currentUser && (event === "SIGNED_IN" || event === "INITIAL_SESSION")) {
+      pullFromCloud();
+    }
+  });
+}
+
 // ========== 初期化 ==========
 renderPalette();
 renderDateTypeList();
 setupGoalListeners();
 setView(currentView);
+initAuth();
 
 // グリッド表示エリア（schedule-scroll）の縦スクロール領域を、画面の高さからヘッダー＋ツールバーの実測高さを引いた分だけ確保する
 // これにより、グリッド内を下にスクロールしても曜日・日付の見出し行（thead）が画面に常時表示される
